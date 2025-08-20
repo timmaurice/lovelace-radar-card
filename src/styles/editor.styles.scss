@@ -1,5 +1,62 @@
+@use 'color-picker';
+
 .card-config {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.side-by-side {
+  display: flex;
+  gap: 16px;
+
+  > * {
+    flex: 1;
+  }
+}
+
+.entities-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entity-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+
+  ha-entity-picker {
+    flex-grow: 1;
+  }
+}
+.header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+
+  .title {
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+}
+
+.option-group {
+  border: 1px solid var(--divider-color);
+  border-radius: var(--ha-card-border-radius, 4px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+
+  &-title {
+    color: var(--primary-text-color);
+    font-weight: bold;
+  }
+}
+
+.option-row {
+  align-items: center;
+  display: flex;
   gap: 16px;
 }

@@ -1,8 +1,29 @@
 {
   "editor": {
     "title": "Title (Optional)",
-    "entity": "Entity"
+    "entities": "Entities",
+    "entity": "Entity",
+    "name": "Name (Optional)",
+    "color": "Color (Optional)",
+    "add_entity": "Add Entity",
+    "data": "Data",
+    "auto_radar_max_distance": "Auto Max Distance",
+    "radar_max_distance": "Radar Max Distance",
+    "appearance": "Appearance",
+    "grid_color": "Grid Color (Optional)",
+    "font_color": "Font Color (Optional)",
+    "entity_color": "Default Entity Color (Optional)",
+    "points_clickable": "Make points clickable"
   },
   "card": {
+    "distance": "Distance",
+    "azimuth": "Azimuth",
+    "no_entities": "No entities to show",
+    "directions": {
+      "N": "N",
+      "E": "E",
+      "S": "S",
+      "W": "W"
+    }
   }
 }

@@ -1,25 +1,53 @@
-import { LitElement, html, css, TemplateResult, unsafeCSS } from 'lit';
+import { LitElement, html, css, TemplateResult, unsafeCSS, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCardEditor, RadarCardConfig } from './types';
+import { HomeAssistant, LovelaceCardEditor, RadarCardConfig, RadarCardEntityConfig } from './types';
+import 'vanilla-colorful/hex-color-picker.js';
 import { localize } from './localize';
 import { fireEvent } from './utils';
 import editorStyles from './styles/editor.styles.scss';
 
 interface ValueChangedEventTarget extends HTMLElement {
-  configValue?: keyof RadarCardConfig;
-  value?: string | number;
+  configValue?: keyof RadarCardConfig | keyof RadarCardEntityConfig;
+  value?: string | number | string[] | boolean;
   checked?: boolean;
   type?: string;
   tagName: string;
+  dataset: {
+    index?: string;
+  };
+}
+
+interface EntityPicker extends HTMLElement {
+  value: string;
+  index: number;
 }
 
 @customElement('radar-card-editor')
 export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: RadarCardConfig;
+  @state() private _colorPickerOpenFor: string | null = null;
+  @state() private _editingIndex: number | null = null;
 
   public setConfig(config: RadarCardConfig): void {
     this._config = config;
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('click', this._handleOutsideClick, { capture: true });
+  }
+
+  protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
+    super.updated(changedProperties);
+    if (changedProperties.has('_colorPickerOpenFor')) {
+      if (this._colorPickerOpenFor) {
+        // Using capture to make sure we get the click before the element's own handler.
+        window.addEventListener('click', this._handleOutsideClick, { capture: true });
+      } else {
+        window.removeEventListener('click', this._handleOutsideClick, { capture: true });
+      }
+    }
   }
 
   private _valueChanged(ev: Event): void {
@@ -27,16 +55,35 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       return;
     }
     const target = ev.target as ValueChangedEventTarget;
-    if (!target.configValue) {
+    if (target.configValue === undefined) {
       return;
     }
 
-    const configValue = target.configValue as keyof RadarCardConfig;
+    const configValue = target.configValue;
     const newConfig = { ...this._config };
 
-    const value = target.tagName === 'HA-SWITCH' ? target.checked : target.value;
+    let value;
+    if (ev.type === 'value-changed' || ev.type === 'color-changed') {
+      value = (ev as CustomEvent).detail.value;
+    } else {
+      value = target.tagName === 'HA-SWITCH' ? target.checked : target.value;
+    }
 
-    if (value === '' || value === false || value === undefined) {
+    if (configValue === 'auto_radar_max_distance') {
+      if (value) {
+        newConfig.auto_radar_max_distance = true;
+        delete newConfig.radar_max_distance;
+      } else {
+        delete newConfig.auto_radar_max_distance;
+      }
+    } else if (configValue === 'points_clickable') {
+      if (value) {
+        // is checked, so it's true. true is the default, so we remove it.
+        delete newConfig.points_clickable;
+      } else {
+        newConfig.points_clickable = false;
+      }
+    } else if (value === '' || value === false || value === undefined || (Array.isArray(value) && value.length === 0)) {
       delete newConfig[configValue];
     } else {
       newConfig[configValue] = target.type === 'number' ? Number(value) : value;
@@ -45,15 +92,210 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
-  private _entityChanged(ev: CustomEvent): void {
-    if (!this._config || !this.hass) {
+  private _handleOutsideClick = (e: MouseEvent): void => {
+    if (!this._colorPickerOpenFor) return;
+
+    if (e.composedPath().some((el) => el instanceof HTMLElement && el.dataset.pickerId === this._colorPickerOpenFor)) {
+      // Click was inside the currently open picker's wrapper, so do nothing.
       return;
     }
-    const newConfig = {
-      ...this._config,
-      entity: ev.detail.value,
+
+    // Click was outside, close the picker.
+    this._closeColorPicker();
+  };
+
+  private _toggleColorPicker(pickerId: string): void {
+    this._colorPickerOpenFor = this._colorPickerOpenFor === pickerId ? null : pickerId;
+  }
+
+  private _closeColorPicker(): void {
+    if (this._colorPickerOpenFor !== null) {
+      this._colorPickerOpenFor = null;
+    }
+  }
+
+  private _renderColorInput(
+    label: string,
+    configValue: keyof RadarCardConfig | keyof RadarCardEntityConfig,
+    index?: number,
+  ): TemplateResult {
+    const isEntityConfig = index !== undefined;
+    const config = isEntityConfig ? this._getEntities()[index as number] : this._config;
+    const value = (config ? config[configValue as keyof typeof config] : '') || '';
+
+    // The color picker needs a concrete color value. If we have a CSS variable,
+    // we resolve it to its hex value for display. The config will store the
+    // variable until the user picks a new color.
+    let resolvedValue = value;
+    if (typeof value === 'string' && value.startsWith('var(')) {
+      try {
+        const varName = value.substring(4, value.length - 1);
+        resolvedValue = getComputedStyle(this).getPropertyValue(varName).trim();
+      } catch (e) {
+        console.error('Failed to resolve CSS variable', value, e);
+        resolvedValue = '#000000'; // Fallback to black
+      }
+    }
+
+    const handleClear = (e: Event): void => {
+      e.stopPropagation(); // Prevent the textfield click from reopening the picker
+      if (isEntityConfig) {
+        const entities = [...this._getEntities()];
+        const newEntityConf = { ...entities[index as number] };
+        delete newEntityConf[configValue as keyof RadarCardEntityConfig];
+        entities[index as number] = newEntityConf;
+        fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+      } else {
+        const newConfig = { ...this._config };
+        delete newConfig[configValue as keyof RadarCardConfig];
+        fireEvent(this, 'config-changed', { config: newConfig });
+      }
+      this._closeColorPicker();
     };
-    fireEvent(this, 'config-changed', { config: newConfig });
+
+    const pickerId = isEntityConfig ? `${configValue}_${index}` : (configValue as string);
+    const isPickerOpen = this._colorPickerOpenFor === pickerId;
+
+    return html`
+      <div class="color-input-wrapper" data-picker-id=${pickerId}>
+        <ha-textfield
+          .label=${label}
+          .value=${value}
+          .configValue=${configValue}
+          data-index=${index}
+          .placeholder=${'e.g., #ff0000 or var(--primary-color)'}
+          @input=${isEntityConfig ? this._entityAttributeChanged : this._valueChanged}
+          @click=${() => this._toggleColorPicker(pickerId)}
+        >
+          ${value
+            ? html`<ha-icon-button
+                slot="trailingIcon"
+                class="clear-button"
+                .label=${'Clear'}
+                @click=${handleClear}
+                title="Clear color"
+              >
+                <ha-icon icon="mdi:close"></ha-icon>
+              </ha-icon-button>`
+            : nothing}
+        </ha-textfield>
+        <div
+          class="color-preview"
+          style="background-color: ${resolvedValue || 'transparent'}"
+          @click=${() => this._toggleColorPicker(pickerId)}
+        ></div>
+        ${isPickerOpen
+          ? html`
+              <div class="color-picker-popup">
+                <hex-color-picker
+                  .configValue=${configValue}
+                  data-index=${index}
+                  .color=${resolvedValue || '#000000'}
+                  @color-changed=${isEntityConfig ? this._entityAttributeChanged : this._valueChanged}
+                ></hex-color-picker>
+              </div>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _getEntities(): RadarCardEntityConfig[] {
+    return this._config.entities?.map((entity) => (typeof entity === 'string' ? { entity } : entity)) || [];
+  }
+
+  private _addEntity(): void {
+    const entities = [...this._getEntities(), { entity: '' }];
+    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+  }
+
+  private _removeEntity(index: number): void {
+    const entities = [...this._getEntities()];
+    entities.splice(index, 1);
+    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+  }
+
+  private _entityAttributeChanged(ev: Event): void {
+    if (!this._config || !this.hass || this._editingIndex === null) {
+      return;
+    }
+    const target = ev.target as ValueChangedEventTarget;
+    const index = Number(target.dataset.index);
+    const configValue = target.configValue as keyof RadarCardEntityConfig;
+
+    if (isNaN(index)) return;
+
+    const entities = [...this._getEntities()];
+    const newEntityConf = { ...entities[index] };
+
+    let value;
+    if (ev.type === 'value-changed' || ev.type === 'color-changed') {
+      value = (ev as CustomEvent).detail.value;
+    } else {
+      value = target.value;
+    }
+
+    if (value === '' || value === undefined) {
+      delete newEntityConf[configValue];
+    } else {
+      newEntityConf[configValue] = value;
+    }
+
+    entities[index] = newEntityConf;
+    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+  }
+
+  private _entityValueChanged(ev: CustomEvent): void {
+    const target = ev.target as EntityPicker;
+    const index = target.index as number;
+    const entities = [...this._getEntities()];
+    entities[index] = { ...entities[index], entity: target.value };
+    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+  }
+
+  private _editEntity(index: number): void {
+    this._editingIndex = index;
+    this.requestUpdate();
+  }
+
+  private _goBack(): void {
+    this._editingIndex = null;
+    this.requestUpdate();
+  }
+
+  private _renderEntityEditor(): TemplateResult | typeof nothing {
+    if (this._editingIndex === null) return nothing;
+
+    const entityConf = this._getEntities()[this._editingIndex];
+    if (!entityConf) return nothing;
+
+    const stateObj = this.hass.states[entityConf.entity];
+    const title = entityConf.name || stateObj?.attributes.friendly_name || entityConf.entity;
+
+    return html`
+      <div class="card-content card-config">
+        <div class="header">
+          <ha-icon-button @click=${this._goBack}>
+            <ha-icon icon="mdi:arrow-left"></ha-icon>
+          </ha-icon-button>
+          <span class="title">${title}</span>
+        </div>
+        <div class="option-group">
+          <ha-textfield
+            .label=${localize(this.hass, 'component.radar-card.editor.name')}
+            .value=${entityConf.name || ''}
+            .configValue=${'name'}
+            data-index=${this._editingIndex}
+            @input=${this._entityAttributeChanged}
+          ></ha-textfield>
+          ${this._renderColorInput(
+            localize(this.hass, 'component.radar-card.editor.color'),
+            'color',
+            this._editingIndex,
+          )}
+        </div>
+      </div>
+    `;
   }
 
   protected render(): TemplateResult {
@@ -61,24 +303,99 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       return html``;
     }
 
+    if (this._editingIndex !== null) {
+      return html`<ha-card>${this._renderEntityEditor()}</ha-card>`;
+    }
+
     return html`
       <ha-card>
         <div class="card-content card-config">
-          <ha-textfield
-            .label=${localize(this.hass, 'component.radar-card.editor.title')}
-            .value=${this._config.title || ''}
-            .configValue=${'title'}
-            @input=${this._valueChanged}
-          ></ha-textfield>
-          <ha-entity-picker
-            .hass=${this.hass}
-            .label=${localize(this.hass, 'component.radar-card.editor.entity')}
-            .value=${this._config.entity || ''}
-            .includeDomains=${['sensor', 'event']}
-            @value-changed=${this._entityChanged}
-            allow-custom-entity
-            required
-          ></ha-entity-picker>
+          <div class="option-group">
+            <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.data')}</div>
+            <ha-textfield
+              .label=${localize(this.hass, 'component.radar-card.editor.title')}
+              .value=${this._config.title || ''}
+              .configValue=${'title'}
+              @input=${this._valueChanged}
+            ></ha-textfield>
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.auto_radar_max_distance === true}
+                .configValue=${'auto_radar_max_distance'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label"
+                >${localize(this.hass, 'component.radar-card.editor.auto_radar_max_distance')}</label
+              >
+            </div>
+            ${this._config.auto_radar_max_distance
+              ? nothing
+              : html`
+                  <ha-textfield
+                    .label=${localize(this.hass, 'component.radar-card.editor.radar_max_distance')}
+                    type="number"
+                    .value=${this._config.radar_max_distance || ''}
+                    .configValue=${'radar_max_distance'}
+                    @input=${this._valueChanged}
+                  ></ha-textfield>
+                `}
+          </div>
+          <div class="option-group">
+            <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.appearance')}</div>
+            <div class="side-by-side">
+              ${this._renderColorInput(
+                localize(this.hass, 'component.radar-card.editor.grid_color'),
+                'grid_color',
+                undefined,
+              )}
+              ${this._renderColorInput(
+                localize(this.hass, 'component.radar-card.editor.font_color'),
+                'font_color',
+                undefined,
+              )}
+            </div>
+            ${this._renderColorInput(
+              localize(this.hass, 'component.radar-card.editor.entity_color'),
+              'entity_color',
+              undefined,
+            )}
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.points_clickable !== false}
+                .configValue=${'points_clickable'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.points_clickable')}</label>
+            </div>
+          </div>
+
+          <div class="option-group entities">
+            <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.entities')}</div>
+            ${this._getEntities().map(
+              (entityConf, index) => html`
+                <div class="entity-row">
+                  <ha-entity-picker
+                    .hass=${this.hass}
+                    .value=${entityConf.entity}
+                    .configValue=${'entities'}
+                    .index=${index}
+                    @value-changed=${this._entityValueChanged}
+                    allow-custom-entity
+                  ></ha-entity-picker>
+                  <ha-icon-button .label=${'Edit'} @click=${() => this._editEntity(index)}>
+                    <ha-icon icon="mdi:pencil"></ha-icon>
+                  </ha-icon-button>
+                  <ha-icon-button .label=${'Remove'} @click=${() => this._removeEntity(index)}>
+                    <ha-icon icon="mdi:close"></ha-icon>
+                  </ha-icon-button>
+                </div>
+              `,
+            )}
+            <ha-button @click=${this._addEntity}>
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+              ${localize(this.hass, 'component.radar-card.editor.add_entity')}
+            </ha-button>
+          </div>
         </div>
       </ha-card>
     `;

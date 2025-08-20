@@ -11,6 +11,15 @@
 
 ![Radar Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-radar-card/main/screenshot.png)
 
+- Plot multiple `device_tracker` entities on a polar chart.
+- Automatically scales the radar distance to fit all entities.
+- Manually set a fixed maximum radar distance.
+- Customizable colors for the grid, fonts, and a default for all entities.
+- Per-entity customization for name and color.
+- Interactive points on the radar:
+  - Hover to see a tooltip with distance and azimuth.
+  - Click to open the entity's more-info dialog (can be disabled).
+
 ## Installation
 
 ### HACS (Recommended)
@@ -31,17 +40,44 @@ You can now add the card to your dashboard.
 
 ## Configuration
 
-| Name                      | Type    | Default      | Description                                                                                             |
-| ------------------------- | ------- | ------------ | ------------------------------------------------------------------------------------------------------- |
-| `type`                    | string  | **Required** | `custom:radar-card`                                                                                  |
-| `entity`                  | string  | **Required** | The entity ID of your feed sensor or event.                                                             |
-| `title`                   | string  | `''`         | The title of the card.                                                                                  |
+### Main Configuration
+
+| Name                      | Type    | Default                     | Description                                                                                              |
+| ------------------------- | ------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `type`                    | string  | **Required**                | `custom:radar-card`                                                                                      |
+| `title`                   | string  | `''`                        | The title of the card.                                                                                   |
+| `entities`                | array   | **Required**                | A list of entity objects to display on the radar.                                                        |
+| `auto_radar_max_distance` | boolean | `false`                     | Automatically adjust the maximum radar distance based on the furthest entity.                            |
+| `radar_max_distance`      | number  | `100`                       | The maximum distance shown on the radar (in km or mi). Ignored if `auto_radar_max_distance` is `true`.   |
+| `grid_color`              | string  | `var(--primary-text-color)` | Color for the radar grid lines and cardinal points.                                                      |
+| `font_color`              | string  | `var(--primary-text-color)` | Color for the cardinal point labels (N, E, S, W).                                                        |
+| `entity_color`            | string  | `var(--info-color)`         | Default color for the entity points on the radar.                                                        |
+| `points_clickable`        | boolean | `true`                      | If `true`, clicking an entity point opens the more-info dialog. Set to `false` to disable this behavior. |
+
+### Entity Configuration
+
+Each entry in the `entities` list can be a simple string or an object with more options.
+
+| Name     | Type   | Default                | Description                                           |
+| -------- | ------ | ---------------------- | ----------------------------------------------------- |
+| `entity` | string | **Required**           | The ID of the `device_tracker` entity.                |
+| `name`   | string | (entity friendly name) | An override for the entity name shown in the tooltip. |
+| `color`  | string | (from `entity_color`)  | An override for the entity point color.               |
 
 ### Examples
 
 ```yaml
 type: custom:radar-card
-title: Home Assistant Blog
+title: Device Locations
+auto_radar_max_distance: true
+entity_color: 'var(--accent-color)'
+entities:
+  - entity: device_tracker.person1
+    name: Person 1
+    color: '#ff0000'
+  - device_tracker.person2 # You can also use a simple string
+  - entity: device_tracker.car
+    color: 'blue'
 ```
 
 ## Development

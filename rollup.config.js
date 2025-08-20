@@ -19,6 +19,12 @@ export default {
     sourcemap: dev,
     inlineDynamicImports: true,
   },
+  onwarn(warning, warn) {
+    if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message.includes('d3-')) {
+      return;
+    }
+    warn(warning);
+  },
   plugins: [
     replace({
       preventAssignment: true,

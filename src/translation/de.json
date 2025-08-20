@@ -1,8 +1,29 @@
 {
   "editor": {
     "title": "Titel (Optional)",
-    "entity": "Entität"
+    "entities": "Entitäten",
+    "entity": "Entität",
+    "name": "Name (Optional)",
+    "color": "Farbe (Optional)",
+    "add_entity": "Entität hinzufügen",
+    "data": "Daten",
+    "auto_radar_max_distance": "Auto. max. Entfernung",
+    "radar_max_distance": "Radar max. Entfernung",
+    "appearance": "Darstellung",
+    "grid_color": "Gitterfarbe (Optional)",
+    "font_color": "Schriftfarbe (Optional)",
+    "entity_color": "Standard Entitätsfarbe (Optional)",
+    "points_clickable": "Punkte klickbar machen"
   },
   "card": {
+    "distance": "Entfernung",
+    "azimuth": "Azimut",
+    "no_entities": "Keine Entitäten zum Anzeigen",
+    "directions": {
+      "N": "N",
+      "E": "O",
+      "S": "S",
+      "W": "W"
+    }
   }
 }

@@ -5,3 +5,50 @@
 .warning {
   color: var(--error-color);
 }
+
+.radar-chart-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.radar-chart {
+  height: 220px;
+  position: relative;
+  width: 220px;
+}
+
+.custom-tooltip {
+  background-color: var(--ha-card-background, var(--card-background-color, white));
+  border: 1px solid var(--divider-color);
+  border-radius: var(--ha-card-border-radius, 4px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  left: 0;
+  line-height: 1.4;
+  max-width: 220px;
+  opacity: 0;
+  overflow-wrap: break-word;
+  padding: 8px;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transition: opacity 0.2s ease-in-out;
+  visibility: hidden;
+  z-index: 1000;
+
+  &.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  strong {
+    color: var(--primary-text-color);
+  }
+}
+
+.no-entities {
+  text-align: center;
+  padding: 16px;
+}

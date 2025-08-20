@@ -1,4 +1,4 @@
 {
-  "cSpell.words": ["dimgray", "HACS", "hacsfiles", "hass"],
+  "cSpell.words": ["dimgray", "HACS", "hacsfiles", "hass", "labelledby", "onwarn"],
   "cSpell.ignorePaths": [".github/**", "node_modules/**", "dist/**"]
 }

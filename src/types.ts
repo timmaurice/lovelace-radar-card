@@ -17,6 +17,17 @@ export interface HomeAssistant {
     darkMode?: boolean;
     [key: string]: unknown;
   };
+  config: {
+    latitude: number;
+    longitude: number;
+    elevation: number;
+    unit_system: {
+      length: string;
+      [key: string]: unknown;
+    };
+    time_zone: string;
+    [key: string]: unknown;
+  };
   // You can expand this with more properties from the hass object if needed
 }
 
@@ -55,7 +66,19 @@ export interface LovelaceCardEditor extends HTMLElement {
   setConfig(config: LovelaceCardConfig): void;
 }
 
+export interface RadarCardEntityConfig {
+  entity: string;
+  name?: string;
+  color?: string;
+}
+
 export interface RadarCardConfig extends LovelaceCardConfig {
   title?: string;
-  entity: string;
+  entities: (string | RadarCardEntityConfig)[];
+  auto_radar_max_distance?: boolean;
+  radar_max_distance?: number;
+  grid_color?: string;
+  font_color?: string;
+  entity_color?: string;
+  points_clickable?: boolean;
 }
