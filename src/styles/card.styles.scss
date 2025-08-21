@@ -2,9 +2,9 @@
   padding: 16px;
 
   &.flex-layout {
+    align-items: center;
     display: flex;
     gap: 16px;
-    align-items: center;
     padding: 8px;
   }
 
@@ -20,11 +20,11 @@
 }
 
 .radar-chart-container {
-  position: relative;
-  display: flex;
-  justify-content: center;
   align-items: center;
+  display: flex;
   flex-shrink: 0;
+  justify-content: center;
+  position: relative;
 }
 
 .radar-chart {
@@ -63,8 +63,8 @@
 }
 
 .no-entities {
-  text-align: center;
   padding: 16px;
+  text-align: center;
 }
 
 @keyframes pulse {
@@ -89,28 +89,28 @@
 
   &.bottom {
     flex-wrap: wrap;
-    justify-content: center;
     gap: 8px 16px;
+    justify-content: center;
     margin-top: 16px;
   }
 
   &.left,
   &.right {
-    flex-direction: column;
     align-items: flex-start;
-    overflow-y: auto;
-    max-height: 220px;
+    flex-direction: column;
     flex-grow: 1;
+    max-height: 220px;
+    overflow-y: auto;
     pointer-events: auto;
   }
 }
 
 .legend-item {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
   border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
   padding: 2px 4px;
   transition: background-color 0.3s ease;
 }
@@ -123,16 +123,26 @@
 }
 
 .legend-color {
-  width: 12px;
-  height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+  height: 12px;
+  width: 12px;
+}
+
+.legend-text-container {
+  color: var(--secondary-text-color);
+  font-size: 12px;
 }
 
 .legend-name {
-  font-size: 12px;
-  color: var(--secondary-text-color);
-  white-space: nowrap;
+  display: inline-block;
+  max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.legend-distance {
+  font-style: italic;
 }

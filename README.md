@@ -9,16 +9,30 @@
 
 ## Features
 
-![Radar Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-radar-card/main/screenshot.png)
+### Flexible Plotting
 
 - Plot multiple `device_tracker` entities on a polar chart.
-- Automatically scales the radar distance to fit all entities.
-- Manually set a fixed maximum radar distance.
-- Customizable colors for the grid, fonts, and a default for all entities.
-- Per-entity customization for name and color.
-- Interactive points on the radar:
-  - Hover to see a tooltip with distance and azimuth.
-  - Click to open the entity's more-info dialog (can be disabled).
+- Set a custom center point with latitude and longitude, or use your Home Assistant location by default.
+
+### Dynamic Radar Display
+
+- Automatically scales the radar distance to fit all entities, or set a fixed maximum distance.
+- Optional, clear distance labels on the grid rings for quick reference.
+
+### Rich Interactivity
+
+- Hover over points to see a detailed tooltip with distance and azimuth.
+- Click points to open the entity's more-info dialog (can be disabled).
+- Display an optional legend to identify entities by color.
+- Click legend items to make the corresponding dot on the radar pulse.
+
+### Deep Customization
+
+- Customize colors for the grid, fonts, and a default for all entities.
+- Override name and color on a per-entity basis.
+- Configure legend position (`bottom`, `left`, `right`) and optionally show distances within it.
+
+![Radar Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-radar-card/main/screenshot.png)
 
 ## Installation
 
@@ -40,6 +54,14 @@ You can now add the card to your dashboard.
 
 ## Configuration
 
+This card is fully configurable through the Lovelace UI editor.
+
+- **Main Settings**: Configure the card's title, radar distance settings, and center coordinates.
+- **Appearance**: Customize colors, toggle grid labels, and configure the legend's appearance and position.
+- **Entities**: Add, remove, and reorder entities. You can easily sort your entities using drag and drop. Click the pencil icon to edit an entity's name and color individually.
+
+For those who prefer YAML, the options are documented below.
+
 ### Main Configuration
 
 | Name                      | Type    | Default                     | Description                                                                                              |
@@ -60,7 +82,7 @@ You can now add the card to your dashboard.
 | `center_latitude`         | number  | (from Home Assistant)       | Override the latitude of the center location of the radar. Requires `center_longitude`.                  |
 | `center_longitude`        | number  | (from Home Assistant)       | Override the longitude of the center location of the radar. Requires `center_latitude`.                  |
 
-### Entity Configuration
+### Entity Configuration (within `entities` list)
 
 Each entry in the `entities` list can be a simple string or an object with more options.
 

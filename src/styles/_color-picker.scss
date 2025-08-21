@@ -23,6 +23,13 @@
   top: 100%;
   z-index: 10;
 
+  &.popup-top {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    bottom: 100%;
+    top: auto;
+  }
+
   hex-color-picker {
     height: 200px;
     width: 200px;

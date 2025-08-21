@@ -138,12 +138,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const tooltipHeight = tooltipEl.offsetHeight;
 
     // Position tooltip to the left of the cursor on the right half of the card, and to the right on the left half.
-    const xOffset = x > containerRect.width / 2 ? -tooltipWidth - 10 : 10;
+    const xOffset = x > containerRect.width / 2 ? -tooltipWidth - 5 : 5;
 
     // Position tooltip above cursor, unless it would go off-screen from the top.
-    let yOffset = -tooltipHeight - 10; // 10px buffer above
+    let yOffset = -tooltipHeight - 5; // 5px buffer above
     if (y + yOffset < 0) {
-      yOffset = 20; // Fallback to 20px below cursor
+      yOffset = 15; // Fallback to 15px below cursor
     }
 
     this._tooltip = { ...this._tooltip, x: x + xOffset, y: y + yOffset };
@@ -313,7 +313,6 @@ export class RadarCard extends LitElement implements LovelaceCard {
     return html`
       <div class="legend ${position}">
         ${this._points.map((point) => {
-          const distanceStr = showDistance ? ` (${formatDistance(point.distance, distanceUnit)})` : '';
           return html`
             <div
               class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
@@ -323,7 +322,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
                 class="legend-color"
                 style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
               ></span>
-              <span class="legend-name">${point.name}${distanceStr}</span>
+              <div class="legend-text-container ${!showDistance ? 'no-distance' : ''}">
+                <span class="legend-name">${point.name}</span>${showDistance
+                  ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
+                  : nothing}
+              </div>
             </div>
           `;
         })}
@@ -455,7 +458,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
-    if (this._config && this.hass && (changedProperties.has('hass') || changedProperties.has('_config'))) {
+    if (this._config && this.hass) {
       this._renderRadarChart(this._points);
     }
   }

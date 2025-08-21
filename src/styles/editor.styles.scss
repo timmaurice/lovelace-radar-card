@@ -19,15 +19,36 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  &.drag-active .entity-row:not(.is-dragging) > * {
+    pointer-events: none;
+  }
 }
 
 .entity-row {
   align-items: center;
+  border-radius: 4px;
   display: flex;
   gap: 8px;
+  padding: 4px;
+  transition: background-color 0.2s ease-in-out;
 
   ha-entity-picker {
     flex-grow: 1;
+  }
+
+  .drag-handle {
+    color: var(--secondary-text-color);
+    cursor: move;
+  }
+
+  &.is-dragging {
+    background: rgba(var(--rgb-primary-color), 0.1);
+    opacity: 0.5;
+  }
+
+  &.drag-over {
+    background: rgba(var(--rgb-accent-color), 0.1);
   }
 }
 .header {

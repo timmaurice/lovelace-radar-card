@@ -28,6 +28,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   @state() private _config!: RadarCardConfig;
   @state() private _colorPickerOpenFor: string | null = null;
   @state() private _editingIndex: number | null = null;
+  @state() private _draggedIndex: number | null = null;
 
   public setConfig(config: RadarCardConfig): void {
     this._config = config;
@@ -198,7 +199,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         ></div>
         ${isPickerOpen
           ? html`
-              <div class="color-picker-popup">
+              <div class="color-picker-popup ${isEntityConfig ? 'popup-top' : ''}">
                 <hex-color-picker
                   .configValue=${configValue}
                   data-index=${index}
@@ -273,6 +274,56 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   private _goBack(): void {
     this._editingIndex = null;
     this.requestUpdate();
+  }
+
+  private _handleDragStart(ev: DragEvent, index: number): void {
+    this._draggedIndex = index;
+    if (ev.dataTransfer) {
+      ev.dataTransfer.effectAllowed = 'move';
+      // Required for Firefox to initiate drag
+      ev.dataTransfer.setData('text/plain', '');
+    }
+    (ev.currentTarget as HTMLElement).classList.add('is-dragging');
+    this.shadowRoot?.querySelector('.entities-container')?.classList.add('drag-active');
+  }
+
+  private _handleDragEnter(ev: DragEvent): void {
+    ev.preventDefault();
+    const target = ev.currentTarget as HTMLElement;
+    if (target.dataset.index !== String(this._draggedIndex)) {
+      target.classList.add('drag-over');
+    }
+  }
+
+  private _handleDragOver(ev: DragEvent): void {
+    ev.preventDefault(); // This is necessary to allow a drop.
+  }
+
+  private _handleDragLeave(ev: DragEvent): void {
+    (ev.currentTarget as HTMLElement).classList.remove('drag-over');
+  }
+
+  private _handleDrop(ev: DragEvent, dropIndex: number): void {
+    ev.preventDefault();
+    (ev.currentTarget as HTMLElement).classList.remove('drag-over');
+
+    if (this._draggedIndex === null || this._draggedIndex === dropIndex) {
+      return;
+    }
+
+    const entities = [...this._getEntities()];
+    const [draggedItem] = entities.splice(this._draggedIndex, 1);
+    entities.splice(dropIndex, 0, draggedItem);
+    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+  }
+
+  private _handleDragEnd(): void {
+    // Clean up all drag-related classes
+    this.shadowRoot?.querySelectorAll('.entity-row').forEach((el) => {
+      el.classList.remove('is-dragging', 'drag-over');
+    });
+    this.shadowRoot?.querySelector('.entities-container')?.classList.remove('drag-active');
+    this._draggedIndex = null;
   }
 
   private _renderEntityEditor(): TemplateResult | typeof nothing {
@@ -448,26 +499,39 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
 
           <div class="option-group entities">
             <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.entities')}</div>
-            ${this._getEntities().map(
-              (entityConf, index) => html`
-                <div class="entity-row">
-                  <ha-entity-picker
-                    .hass=${this.hass}
-                    .value=${entityConf.entity}
-                    .configValue=${'entities'}
-                    .index=${index}
-                    @value-changed=${this._entityValueChanged}
-                    allow-custom-entity
-                  ></ha-entity-picker>
-                  <ha-icon-button .label=${'Edit'} @click=${() => this._editEntity(index)}>
-                    <ha-icon icon="mdi:pencil"></ha-icon>
-                  </ha-icon-button>
-                  <ha-icon-button .label=${'Remove'} @click=${() => this._removeEntity(index)}>
-                    <ha-icon icon="mdi:close"></ha-icon>
-                  </ha-icon-button>
-                </div>
-              `,
-            )}
+            <div class="entities-container">
+              ${this._getEntities().map(
+                (entityConf, index) => html`
+                  <div
+                    class="entity-row"
+                    data-index=${index}
+                    draggable="true"
+                    @dragstart=${(e: DragEvent) => this._handleDragStart(e, index)}
+                    @dragenter=${this._handleDragEnter}
+                    @dragover=${this._handleDragOver}
+                    @dragleave=${this._handleDragLeave}
+                    @drop=${(e: DragEvent) => this._handleDrop(e, index)}
+                    @dragend=${this._handleDragEnd}
+                  >
+                    <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
+                    <ha-entity-picker
+                      .hass=${this.hass}
+                      .value=${entityConf.entity}
+                      .configValue=${'entities'}
+                      .index=${index}
+                      @value-changed=${this._entityValueChanged}
+                      allow-custom-entity
+                    ></ha-entity-picker>
+                    <ha-icon-button .label=${'Edit'} @click=${() => this._editEntity(index)}>
+                      <ha-icon icon="mdi:pencil"></ha-icon>
+                    </ha-icon-button>
+                    <ha-icon-button .label=${'Remove'} @click=${() => this._removeEntity(index)}>
+                      <ha-icon icon="mdi:close"></ha-icon>
+                    </ha-icon-button>
+                  </div>
+                `,
+              )}
+            </div>
             <ha-button @click=${this._addEntity}>
               <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
               ${localize(this.hass, 'component.radar-card.editor.add_entity')}
