@@ -1,10 +1,15 @@
 import { LitElement, html, css, TemplateResult, unsafeCSS, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor, RadarCardConfig, RadarCardEntityConfig } from './types';
-import 'vanilla-colorful/hex-color-picker.js';
+import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { localize } from './localize';
 import { fireEvent } from './utils';
 import editorStyles from './styles/editor.styles.scss';
+
+// Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
+if (!window.customElements.get('hex-color-picker')) {
+  window.customElements.define('hex-color-picker', class extends HexBase {});
+}
 
 interface ValueChangedEventTarget extends HTMLElement {
   configValue?: keyof RadarCardConfig | keyof RadarCardEntityConfig;
