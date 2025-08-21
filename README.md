@@ -139,3 +139,5 @@ To contribute to the development, you'll need to set up a build environment.
 ---
 
 For further assistance or to [report issues](https://github.com/timmaurice/lovelace-radar-card/issues), please visit the [GitHub repository](https://github.com/timmaurice/lovelace-radar-card).
+
+![Star History Chart](https://api.star-history.com/svg?repos=timmaurice/lovelace-radar-card&type=Date)
