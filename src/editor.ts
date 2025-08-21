@@ -83,8 +83,20 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       } else {
         newConfig.points_clickable = false;
       }
+    } else if (configValue === 'show_grid_labels') {
+      if (value) {
+        delete newConfig.show_grid_labels;
+      } else {
+        newConfig.show_grid_labels = false;
+      }
+    } else if (value === 'bottom' && configValue === 'legend_position') {
+      delete newConfig.legend_position;
     } else if (value === '' || value === false || value === undefined || (Array.isArray(value) && value.length === 0)) {
       delete newConfig[configValue];
+      if (configValue === 'show_legend') {
+        delete newConfig.legend_position;
+        delete newConfig.legend_show_distance;
+      }
     } else {
       newConfig[configValue] = target.type === 'number' ? Number(value) : value;
     }
@@ -339,6 +351,24 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                     @input=${this._valueChanged}
                   ></ha-textfield>
                 `}
+            <div class="side-by-side">
+              <ha-textfield
+                .label=${localize(this.hass, 'component.radar-card.editor.center_latitude')}
+                type="number"
+                .value=${this._config.center_latitude || ''}
+                .configValue=${'center_latitude'}
+                @input=${this._valueChanged}
+                step="any"
+              ></ha-textfield>
+              <ha-textfield
+                .label=${localize(this.hass, 'component.radar-card.editor.center_longitude')}
+                type="number"
+                .value=${this._config.center_longitude || ''}
+                .configValue=${'center_longitude'}
+                @input=${this._valueChanged}
+                step="any"
+              ></ha-textfield>
+            </div>
           </div>
           <div class="option-group">
             <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.appearance')}</div>
@@ -361,12 +391,59 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             )}
             <div class="option-row">
               <ha-switch
+                .checked=${this._config.show_grid_labels !== false}
+                .configValue=${'show_grid_labels'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_grid_labels')}</label>
+            </div>
+            <div class="option-row">
+              <ha-switch
                 .checked=${this._config.points_clickable !== false}
                 .configValue=${'points_clickable'}
                 @change=${this._valueChanged}
               ></ha-switch>
               <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.points_clickable')}</label>
             </div>
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.show_legend === true}
+                .configValue=${'show_legend'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_legend')}</label>
+            </div>
+            ${this._config.show_legend
+              ? html`
+                  <ha-select
+                    .label=${localize(this.hass, 'component.radar-card.editor.legend_position')}
+                    .value=${this._config.legend_position || 'bottom'}
+                    .configValue=${'legend_position'}
+                    @selected=${this._valueChanged}
+                    @closed=${(ev: Event) => ev.stopPropagation()}
+                  >
+                    <mwc-list-item value="bottom"
+                      >${localize(this.hass, 'component.radar-card.editor.legend_positions.bottom')}</mwc-list-item
+                    >
+                    <mwc-list-item value="right"
+                      >${localize(this.hass, 'component.radar-card.editor.legend_positions.right')}</mwc-list-item
+                    >
+                    <mwc-list-item value="left"
+                      >${localize(this.hass, 'component.radar-card.editor.legend_positions.left')}</mwc-list-item
+                    >
+                  </ha-select>
+                  <div class="option-row">
+                    <ha-switch
+                      .checked=${this._config.legend_show_distance === true}
+                      .configValue=${'legend_show_distance'}
+                      @change=${this._valueChanged}
+                    ></ha-switch>
+                    <label class="mdc-label"
+                      >${localize(this.hass, 'component.radar-card.editor.legend_show_distance')}</label
+                    >
+                  </div>
+                `
+              : nothing}
           </div>
 
           <div class="option-group entities">

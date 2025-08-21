@@ -9,15 +9,28 @@
     "data": "Daten",
     "auto_radar_max_distance": "Auto. max. Entfernung",
     "radar_max_distance": "Radar max. Entfernung",
+    "center_latitude": "Mittelpunkt-Breitengrad (Überschreiben)",
+    "center_longitude": "Mittelpunkt-Längengrad (Überschreiben)",
     "appearance": "Darstellung",
     "grid_color": "Gitterfarbe (Optional)",
     "font_color": "Schriftfarbe (Optional)",
     "entity_color": "Standard Entitätsfarbe (Optional)",
-    "points_clickable": "Punkte klickbar machen"
+    "show_grid_labels": "Gitter-Entfernungsbeschriftungen anzeigen",
+    "points_clickable": "Punkte klickbar machen",
+    "show_legend": "Legende anzeigen",
+    "legend_position": "Legendenposition",
+    "legend_positions": {
+      "bottom": "Unten",
+      "right": "Rechts",
+      "left": "Links"
+    },
+    "legend_show_distance": "Entfernung in Legende anzeigen"
   },
   "card": {
     "distance": "Entfernung",
     "azimuth": "Azimut",
+    "no_home_location": "Mittelpunkt ist in Home Assistant nicht festgelegt und es wurden keine benutzerdefinierten Koordinaten angegeben.",
+    "incomplete_center_coords": "Bitte geben Sie sowohl den Mittelpunkt-Breitengrad als auch den Mittelpunkt-Längengrad an.",
     "no_entities": "Keine Entitäten zum Anzeigen",
     "directions": {
       "N": "N",

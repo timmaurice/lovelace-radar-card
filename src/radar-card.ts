@@ -5,8 +5,8 @@ import { max as d3Max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { localize } from './localize.js';
 import { select } from 'd3-selection';
-import styles from './styles/card.styles.scss';
-import { getAzimuth, getDistance, fireEvent } from './utils.js';
+import cardStyles from './styles/card.styles.scss';
+import { getAzimuth, getDistance, fireEvent, formatDistance } from './utils.js';
 
 const ELEMENT_NAME = 'radar-card';
 const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
@@ -65,6 +65,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
     x: 0,
     y: 0,
   };
+  @state() private _pulsingEntityId: string | null = null;
+  @state() private _error: string | null = null;
 
   public setConfig(config: RadarCardConfig): void {
     if (!config || !config.entities || !Array.isArray(config.entities) || config.entities.length === 0) {
@@ -108,16 +110,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   private _getPointTooltipContent(point: RadarPoint, distanceUnit: string): TemplateResult {
-    let distanceStr: string;
-
-    if (distanceUnit === 'km' && point.distance < 1) {
-      distanceStr = `${Math.round(point.distance * 1000)} m`;
-    } else if (distanceUnit === 'mi' && point.distance < 1) {
-      distanceStr = `${Math.round(point.distance * 5280)} ft`;
-    } else {
-      distanceStr = `${point.distance.toFixed(2)} ${distanceUnit}`;
-    }
-
+    const distanceStr = formatDistance(point.distance, distanceUnit);
     return html`
       <strong>${point.name || point.entity_id}</strong><br />
       ${localize(this.hass, 'component.radar-card.card.distance')}: ${distanceStr}<br />
@@ -159,6 +152,16 @@ export class RadarCard extends LitElement implements LovelaceCard {
   private _hideTooltip(): void {
     if (this._tooltip.visible) {
       this._tooltip = { ...this._tooltip, visible: false, content: nothing };
+    }
+  }
+
+  private _handleLegendItemClick(point: RadarPoint): void {
+    if (!point.entity_id) return;
+
+    if (this._pulsingEntityId === point.entity_id) {
+      this._pulsingEntityId = null; // Toggle off
+    } else {
+      this._pulsingEntityId = point.entity_id;
     }
   }
 
@@ -211,6 +214,33 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .attr('r', (d) => rScale(d))
       .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
       .style('opacity', 0.3);
+
+    if (this._config.show_grid_labels !== false) {
+      const labels = gridCircles.map((d) => formatDistance(d, distanceUnit, { removeIntegerDecimals: true }));
+      const units = labels.map((l) => l.split(' ')[1]);
+
+      // Add grid circle labels
+      svg
+        .selectAll('.grid-label')
+        .data(gridCircles)
+        .join('text')
+        .attr('class', 'grid-label')
+        .attr('x', 4)
+        .attr('y', (d) => -rScale(d))
+        .attr('dy', '-0.2em')
+        .style('text-anchor', 'start')
+        .style('fill', this._config.font_color ?? this._config.grid_color ?? 'var(--primary-text-color)')
+        .style('font-size', '8px')
+        .style('opacity', 0.7)
+        .text((d, i) => {
+          const label = labels[i];
+          const stripUnit = i < gridCircles.length - 1 && units[i] === units[i + 1];
+          return stripUnit ? label.split(' ')[0] : label;
+        });
+    } else {
+      svg.selectAll('.grid-label').remove();
+    }
+
     const cardinalPoints = [
       { label: localize(this.hass, 'component.radar-card.card.directions.N'), angle: 0 },
       { label: localize(this.hass, 'component.radar-card.card.directions.E'), angle: 90 },
@@ -247,14 +277,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const entityDots = svg
       .selectAll<SVGCircleElement, RadarPoint>('circle.entity-dot')
       .data(points, (d, i) => d.entity_id || d.name || i)
-      .join(
-        (enter) => enter.append('circle').attr('class', 'entity-dot').style('fill-opacity', 1).attr('r', 3),
-        (update) => update.attr('class', 'entity-dot').style('fill-opacity', 1).attr('r', 3),
-        (exit) => exit.remove(),
-      );
+      .join('circle');
+
     // Set position and tooltip for all dots (new and updated)
     entityDots
+      .attr('r', 3)
+      .attr('class', (d) => `entity-dot ${d.entity_id === this._pulsingEntityId ? 'pulsing' : ''}`)
       .style('fill', (d) => d.color || this._config.entity_color || 'var(--info-color)')
+      .style('fill-opacity', 1)
       .style('cursor', this._config.points_clickable !== false ? 'pointer' : 'default')
       .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
       .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
@@ -275,10 +305,37 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   }
 
+  private _renderLegend(): TemplateResult {
+    const position = this._config.legend_position || 'bottom';
+    const showDistance = this._config.legend_show_distance === true;
+    const distanceUnit = this.hass.config.unit_system.length || 'km';
+
+    return html`
+      <div class="legend ${position}">
+        ${this._points.map((point) => {
+          const distanceStr = showDistance ? ` (${formatDistance(point.distance, distanceUnit)})` : '';
+          return html`
+            <div
+              class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
+              @click=${() => this._handleLegendItemClick(point)}
+            >
+              <span
+                class="legend-color"
+                style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+              ></span>
+              <span class="legend-name">${point.name}${distanceStr}</span>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
   private _calculatePoints(): void {
+    const useCustomCenter = this._config.center_latitude != null && this._config.center_longitude != null;
     const home = {
-      lat: this.hass.config.latitude,
-      lon: this.hass.config.longitude,
+      lat: useCustomCenter ? this._config.center_latitude! : this.hass.config.latitude,
+      lon: useCustomCenter ? this._config.center_longitude! : this.hass.config.longitude,
     };
 
     const normalizedEntities = this._config.entities.map((entity) =>
@@ -317,6 +374,85 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .filter((p): p is RadarPoint => p !== null);
   }
 
+  protected render(): TemplateResult {
+    if (!this._config || !this.hass) {
+      return html``;
+    }
+
+    if (this._error) {
+      return html`
+        <ha-card .header=${this._config.title}>
+          <div class="card-content warning">${this._error}</div>
+        </ha-card>
+      `;
+    }
+
+    if (this._points.length === 0) {
+      return html`
+        <ha-card .header=${this._config.title}>
+          <div class="card-content">
+            <div class="no-entities">${localize(this.hass, 'component.radar-card.card.no_entities')}</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    const legendPosition = this._config.legend_position || 'bottom';
+    const showLegend = this._config.show_legend;
+    const legendTemplate = showLegend ? this._renderLegend() : nothing;
+
+    const isBesideLegend = ['left', 'right'].includes(legendPosition);
+    const isBottomLegend = legendPosition === 'bottom';
+
+    const radarContainer = html`
+      <div class="radar-chart-container" @mousemove=${this._moveTooltip}>
+        <div class="radar-chart"></div>
+        ${this._tooltip.visible
+          ? html`<div class="custom-tooltip visible" style="left: ${this._tooltip.x}px; top: ${this._tooltip.y}px;">
+              ${this._tooltip.content}
+            </div>`
+          : ''}
+      </div>
+    `;
+
+    return html`
+      <ha-card .header=${this._config.title}>
+        <div class="card-content ${isBesideLegend ? `flex-layout legend-${legendPosition}` : ''}">
+          ${radarContainer} ${isBesideLegend || isBottomLegend ? legendTemplate : nothing}
+        </div>
+      </ha-card>
+    `;
+  }
+
+  protected willUpdate(changedProperties: Map<string | number | symbol, unknown>): void {
+    super.willUpdate(changedProperties);
+    if (
+      this._config &&
+      this.hass &&
+      this.hass.config &&
+      (changedProperties.has('hass') || changedProperties.has('_config'))
+    ) {
+      this._error = null;
+      const hasCustomCenter = this._config.center_latitude != null && this._config.center_longitude != null;
+      const hasHaHome = this.hass.config?.latitude != null && this.hass.config?.longitude != null;
+
+      if (!hasHaHome && !hasCustomCenter) {
+        this._error = localize(this.hass, 'component.radar-card.card.no_home_location');
+        return;
+      }
+
+      if (
+        (this._config.center_latitude != null && this._config.center_longitude == null) ||
+        (this._config.center_latitude == null && this._config.center_longitude != null)
+      ) {
+        this._error = localize(this.hass, 'component.radar-card.card.incomplete_center_coords');
+        return;
+      }
+
+      this._calculatePoints();
+    }
+  }
+
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
     if (this._config && this.hass && (changedProperties.has('hass') || changedProperties.has('_config'))) {
@@ -324,51 +460,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   }
 
-  protected render(): TemplateResult {
-    if (!this._config || !this.hass) {
-      return html``;
-    }
-
-    if (!this.hass.config?.latitude || !this.hass.config?.longitude) {
-      return html`
-        <ha-card .header=${this._config.title}>
-          <div class="card-content warning">Home location is not set in Home Assistant.</div>
-        </ha-card>
-      `;
-    }
-
-    return html`
-      <ha-card .header=${this._config.title}>
-        <div class="card-content">
-          <div class="radar-chart-container" @mousemove=${this._moveTooltip}>
-            <div class="radar-chart"></div>
-            ${this._tooltip.visible
-              ? html`<div class="custom-tooltip visible" style="left: ${this._tooltip.x}px; top: ${this._tooltip.y}px;">
-                  ${this._tooltip.content}
-                </div>`
-              : ''}
-          </div>
-          ${this._points.length === 0
-            ? html`<div class="no-entities">${localize(this.hass, 'component.radar-card.card.no_entities')}</div>`
-            : ''}
-        </div>
-      </ha-card>
-    `;
-  }
-
-  protected willUpdate(changedProperties: Map<string | number | symbol, unknown>): void {
-    if (
-      this._config &&
-      this.hass &&
-      this.hass.config &&
-      (changedProperties.has('hass') || changedProperties.has('_config'))
-    ) {
-      this._calculatePoints();
-    }
-  }
-
   static styles = css`
-    ${unsafeCSS(styles)}
+    ${unsafeCSS(cardStyles)}
   `;
 }
 

@@ -72,6 +72,8 @@ export interface RadarCardEntityConfig {
   color?: string;
 }
 
+export type LegendPosition = 'bottom' | 'right' | 'left';
+
 export interface RadarCardConfig extends LovelaceCardConfig {
   title?: string;
   entities: (string | RadarCardEntityConfig)[];
@@ -81,4 +83,10 @@ export interface RadarCardConfig extends LovelaceCardConfig {
   font_color?: string;
   entity_color?: string;
   points_clickable?: boolean;
+  show_legend?: boolean;
+  legend_position?: LegendPosition;
+  legend_show_distance?: boolean;
+  show_grid_labels?: boolean;
+  center_latitude?: number;
+  center_longitude?: number;
 }

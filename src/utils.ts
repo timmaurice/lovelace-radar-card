@@ -66,3 +66,26 @@ export function getAzimuth(lat1: number, lon1: number, lat2: number, lon2: numbe
   brng = (brng + 360) % 360;
   return brng;
 }
+
+/**
+ * Formats a distance value into a string with appropriate units.
+ * Converts to meters or feet for distances less than 1 km/mi.
+ * @param distance The distance value.
+ * @param unit The unit of measurement ('km' or 'mi').
+ * @param options Formatting options.
+ * @returns The formatted distance string.
+ */
+export function formatDistance(distance: number, unit: string, options?: { removeIntegerDecimals?: boolean }): string {
+  if (unit === 'km' && distance < 1) {
+    return `${Math.round(distance * 1000)} m`;
+  }
+  if (unit === 'mi' && distance < 1) {
+    return `${Math.round(distance * 5280)} ft`;
+  }
+
+  const formatted = distance.toFixed(2);
+  if (options?.removeIntegerDecimals && formatted.endsWith('.00')) {
+    return `${distance.toFixed(0)} ${unit}`;
+  }
+  return `${formatted} ${unit}`;
+}

@@ -1,5 +1,18 @@
 .card-content {
   padding: 16px;
+
+  &.flex-layout {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 8px;
+  }
+
+  &.legend-left {
+    .legend {
+      order: -1;
+    }
+  }
 }
 
 .warning {
@@ -11,6 +24,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .radar-chart {
@@ -51,4 +65,74 @@
 .no-entities {
   text-align: center;
   padding: 16px;
+}
+
+@keyframes pulse {
+  0% {
+    r: 3;
+  }
+  50% {
+    r: 7.5;
+  }
+  100% {
+    r: 3;
+  }
+}
+
+.entity-dot.pulsing {
+  animation: pulse 1.5s infinite;
+}
+
+.legend {
+  display: flex;
+  gap: 8px;
+
+  &.bottom {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 16px;
+    margin-top: 16px;
+  }
+
+  &.left,
+  &.right {
+    flex-direction: column;
+    align-items: flex-start;
+    overflow-y: auto;
+    max-height: 220px;
+    flex-grow: 1;
+    pointer-events: auto;
+  }
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: background-color 0.3s ease;
+}
+
+.legend-item:hover {
+  background-color: color-mix(in srgb, var(--secondary-text-color) 10%, transparent);
+}
+.legend-item.active {
+  background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-name {
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

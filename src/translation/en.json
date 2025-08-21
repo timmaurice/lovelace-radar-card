@@ -9,15 +9,28 @@
     "data": "Data",
     "auto_radar_max_distance": "Auto Max Distance",
     "radar_max_distance": "Radar Max Distance",
+    "center_latitude": "Center Latitude (Override)",
+    "center_longitude": "Center Longitude (Override)",
     "appearance": "Appearance",
     "grid_color": "Grid Color (Optional)",
     "font_color": "Font Color (Optional)",
     "entity_color": "Default Entity Color (Optional)",
-    "points_clickable": "Make points clickable"
+    "show_grid_labels": "Show Grid Distance Labels",
+    "points_clickable": "Make points clickable",
+    "show_legend": "Show Legend",
+    "legend_position": "Legend Position",
+    "legend_positions": {
+      "bottom": "Bottom",
+      "right": "Right",
+      "left": "Left"
+    },
+    "legend_show_distance": "Show distance in legend"
   },
   "card": {
     "distance": "Distance",
     "azimuth": "Azimuth",
+    "no_home_location": "Center location is not set in Home Assistant and no custom coordinates are provided.",
+    "incomplete_center_coords": "Please provide both Center Latitude and Center Longitude.",
     "no_entities": "No entities to show",
     "directions": {
       "N": "N",
