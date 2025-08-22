@@ -69,18 +69,20 @@ For those who prefer YAML, the options are documented below.
 | `type`                    | string  | **Required**                | `custom:radar-card`                                                                                      |
 | `title`                   | string  | `''`                        | The title of the card.                                                                                   |
 | `entities`                | array   | **Required**                | A list of entity objects to display on the radar.                                                        |
-| `auto_radar_max_distance` | boolean | `false`                     | Automatically adjust the maximum radar distance based on the furthest entity.                            |
+| `auto_radar_max_distance` | boolean | `true`                      | Automatically adjust the maximum radar distance based on the furthest entity.                            |
 | `radar_max_distance`      | number  | `100`                       | The maximum distance shown on the radar (in km or mi). Ignored if `auto_radar_max_distance` is `true`.   |
 | `grid_color`              | string  | `var(--primary-text-color)` | Color for the radar grid lines and cardinal points.                                                      |
 | `font_color`              | string  | `var(--primary-text-color)` | Color for the cardinal point labels (N, E, S, W).                                                        |
 | `entity_color`            | string  | `var(--info-color)`         | Default color for the entity points on the radar.                                                        |
 | `show_grid_labels`        | boolean | `true`                      | If `true`, shows distance labels on the grid circles.                                                    |
 | `points_clickable`        | boolean | `true`                      | If `true`, clicking an entity point opens the more-info dialog. Set to `false` to disable this behavior. |
-| `show_legend`             | boolean | `false`                     | Show a legend with entity colors and names below the radar.                                              |
+| `show_legend`             | boolean | `true`                      | Show a legend with entity colors and names below the radar.                                              |
 | `legend_position`         | string  | `bottom`                    | Position of the legend. Can be `bottom`, `right`, or `left`.                                             |
-| `legend_show_distance`    | boolean | `false`                     | If `true`, shows the entity's distance in the legend.                                                    |
+| `legend_show_distance`    | boolean | `true`                      | If `true`, shows the entity's distance in the legend.                                                    |
 | `center_latitude`         | number  | (from Home Assistant)       | Override the latitude of the center location of the radar. Requires `center_longitude`.                  |
 | `center_longitude`        | number  | (from Home Assistant)       | Override the longitude of the center location of the radar. Requires `center_latitude`.                  |
+| `animation_enabled`       | boolean | `true`                      | Enable the initial entry animation.                                                                      |
+| `animation_duration`      | number  | `750`                       | Duration of the animation in milliseconds.                                                               |
 
 ### Entity Configuration (within `entities` list)
 
@@ -97,9 +99,6 @@ Each entry in the `entities` list can be a simple string or an object with more 
 ```yaml
 type: custom:radar-card
 title: Device Locations
-auto_radar_max_distance: true
-show_legend: true
-legend_show_distance: true
 entity_color: 'var(--accent-color)'
 entities:
   - entity: device_tracker.person1

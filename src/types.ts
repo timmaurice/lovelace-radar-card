@@ -89,4 +89,6 @@ export interface RadarCardConfig extends LovelaceCardConfig {
   show_grid_labels?: boolean;
   center_latitude?: number;
   center_longitude?: number;
+  animation_enabled?: boolean;
+  animation_duration?: number;
 }

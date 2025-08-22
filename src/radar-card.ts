@@ -3,8 +3,10 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardConfig, LovelaceCard, LovelaceCardEditor, RadarCardConfig } from './types.js';
 import { max as d3Max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
+import { easeCubicOut } from 'd3-ease';
 import { localize } from './localize.js';
 import { select } from 'd3-selection';
+import 'd3-transition';
 import cardStyles from './styles/card.styles.scss';
 import { getAzimuth, getDistance, fireEvent, formatDistance } from './utils.js';
 
@@ -56,6 +58,7 @@ type LovelaceCardConstructor = {
 
 @customElement(ELEMENT_NAME)
 export class RadarCard extends LitElement implements LovelaceCard {
+  @property({ type: Boolean, reflect: true }) public editMode = false;
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: RadarCardConfig;
   @state() private _points: RadarPoint[] = [];
@@ -67,6 +70,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   };
   @state() private _pulsingEntityId: string | null = null;
   @state() private _error: string | null = null;
+  private _hasAnimated = false;
 
   public setConfig(config: RadarCardConfig): void {
     if (!config || !config.entities || !Array.isArray(config.entities) || config.entities.length === 0) {
@@ -118,6 +122,15 @@ export class RadarCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private _getPointAccessibleLabel(point: RadarPoint, distanceUnit: string): string {
+    const distanceStr = formatDistance(point.distance, distanceUnit);
+    const name = point.name || point.entity_id;
+    const distanceLabel = localize(this.hass, 'component.radar-card.card.distance');
+    const azimuthLabel = localize(this.hass, 'component.radar-card.card.azimuth');
+
+    return `${name}. ${distanceLabel}: ${distanceStr}. ${azimuthLabel}: ${Math.round(point.azimuth)}°.`;
+  }
+
   private _moveTooltip(event: MouseEvent): void {
     if (!this._tooltip.visible) return;
 
@@ -165,13 +178,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _renderRadarChart(points: RadarPoint[]) {
+  private _renderRadarChart(points: RadarPoint[], animate = false) {
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
 
     const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
     const distanceUnit = this.hass.config.unit_system.length || 'km';
-    const autoRadar = this._config.auto_radar_max_distance === true;
+    const duration = this._config.animation_duration ?? 750;
+    const autoRadar = this._config.auto_radar_max_distance !== false;
     const maxDistance = autoRadar
       ? (d3Max(points, (d) => d.distance) ?? 100)
       : (this._config.radar_max_distance ?? 100);
@@ -183,7 +197,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .join('svg')
       .attr('viewBox', `0 0 ${RADAR_CHART_WIDTH} ${RADAR_CHART_HEIGHT}`)
       .attr('role', 'img')
-      .attr('aria-labelledby', 'radar-desc');
+      .attr('aria-labelledby', 'radar-title radar-desc');
+
+    svgRoot
+      .selectAll('title')
+      .data([null])
+      .join('title')
+      .attr('id', 'radar-title')
+      .text(this._config.title || 'Radar Chart');
 
     svgRoot
       .selectAll('desc')
@@ -203,40 +224,64 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
     // Add background circles (grid)
     const gridCircles = rScale.ticks(4).slice(1);
-    svg
+    const gridSelection = svg
       .selectAll('.grid-circle')
       .data(gridCircles)
       .join(
         (enter) => enter.append('circle').attr('class', 'grid-circle').style('fill', 'none'),
         (update) => update,
         (exit) => exit.remove(),
-      )
-      .attr('r', (d) => rScale(d))
-      .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
-      .style('opacity', 0.3);
+      );
+
+    if (animate) {
+      gridSelection
+        .attr('r', 0)
+        .transition()
+        .duration(duration)
+        .ease(easeCubicOut)
+        .attr('r', (d) => rScale(d));
+    } else {
+      gridSelection.attr('r', (d) => rScale(d));
+    }
+    gridSelection.style('stroke', this._config.grid_color ?? 'var(--primary-text-color)').style('opacity', 0.3);
 
     if (this._config.show_grid_labels !== false) {
       const labels = gridCircles.map((d) => formatDistance(d, distanceUnit, { removeIntegerDecimals: true }));
       const units = labels.map((l) => l.split(' ')[1]);
 
       // Add grid circle labels
-      svg
-        .selectAll('.grid-label')
+      const gridLabelSelection = svg
+        .selectAll('.grid-label') //
         .data(gridCircles)
         .join('text')
         .attr('class', 'grid-label')
         .attr('x', 4)
-        .attr('y', (d) => -rScale(d))
         .attr('dy', '-0.2em')
         .style('text-anchor', 'start')
         .style('fill', this._config.font_color ?? this._config.grid_color ?? 'var(--primary-text-color)')
-        .style('font-size', '8px')
-        .style('opacity', 0.7)
         .text((d, i) => {
           const label = labels[i];
           const stripUnit = i < gridCircles.length - 1 && units[i] === units[i + 1];
           return stripUnit ? label.split(' ')[0] : label;
         });
+
+      if (animate) {
+        gridLabelSelection
+          .attr('y', 0)
+          .style('opacity', 0)
+          .style('font-size', '0px')
+          .transition()
+          .duration(duration)
+          .ease(easeCubicOut)
+          .attr('y', (d) => -rScale(d))
+          .style('opacity', 0.7)
+          .style('font-size', '8px');
+      } else {
+        gridLabelSelection
+          .attr('y', (d) => -rScale(d))
+          .style('opacity', 0.7)
+          .style('font-size', '8px');
+      }
     } else {
       svg.selectAll('.grid-label').remove();
     }
@@ -248,19 +293,34 @@ export class RadarCard extends LitElement implements LovelaceCard {
       { label: localize(this.hass, 'component.radar-card.card.directions.W'), angle: 270 },
     ];
 
-    svg
+    const cardinalLinesSelection = svg
       .selectAll('.cardinal-line')
       .data(cardinalPoints)
       .join('line')
       .attr('class', 'cardinal-line')
-      .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
-      .style('opacity', 0.3)
+      .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)') //
       .attr('x1', 0)
-      .attr('y1', 0)
-      .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
-      .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)));
+      .attr('y1', 0);
 
-    svg
+    if (animate) {
+      cardinalLinesSelection
+        .attr('x2', 0)
+        .attr('y2', 0)
+        .style('opacity', 0)
+        .transition()
+        .duration(duration)
+        .ease(easeCubicOut)
+        .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
+        .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)))
+        .style('opacity', 0.3);
+    } else {
+      cardinalLinesSelection
+        .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
+        .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)))
+        .style('opacity', 0.3);
+    }
+
+    const cardinalLabelsSelection = svg
       .selectAll('.cardinal-label')
       .data(cardinalPoints)
       .join('text')
@@ -268,33 +328,80 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .text((d) => d.label)
       .style('text-anchor', 'middle')
       .style('dominant-baseline', 'middle')
-      .style('fill', this._config.font_color ?? this._config.grid_color ?? 'var(--primary-text-color)')
-      .style('font-size', '10px')
-      .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
-      .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)));
+      .style('fill', this._config.font_color ?? this._config.grid_color ?? 'var(--primary-text-color)');
+
+    if (animate) {
+      cardinalLabelsSelection
+        .attr('x', 0)
+        .attr('y', 0)
+        .style('opacity', 0)
+        .style('font-size', '0px')
+        .transition()
+        .duration(duration)
+        .ease(easeCubicOut)
+        .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
+        .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)))
+        .style('opacity', 1)
+        .style('font-size', '10px');
+    } else {
+      cardinalLabelsSelection
+        .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
+        .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)))
+        .style('opacity', 1)
+        .style('font-size', '10px');
+    }
 
     // Plot the entities
     const entityDots = svg
       .selectAll<SVGCircleElement, RadarPoint>('circle.entity-dot')
       .data(points, (d, i) => d.entity_id || d.name || i)
-      .join('circle');
+      .join(
+        (enter) =>
+          enter
+            .append('circle')
+            // Add a title element to the circle for accessibility
+            .call((e) => e.append('title')),
+        (update) => update,
+        (exit) => exit.remove(),
+      );
+
+    // Update title content for all dots (both new and existing)
+    entityDots.select('title').text((d) => this._getPointAccessibleLabel(d, distanceUnit));
 
     // Set position and tooltip for all dots (new and updated)
-    entityDots
+    entityDots //
       .attr('r', 3)
+      .attr('tabindex', this._config.points_clickable !== false ? 0 : -1)
       .attr('class', (d) => `entity-dot ${d.entity_id === this._pulsingEntityId ? 'pulsing' : ''}`)
       .style('fill', (d) => d.color || this._config.entity_color || 'var(--info-color)')
       .style('fill-opacity', 1)
       .style('cursor', this._config.points_clickable !== false ? 'pointer' : 'default')
-      .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
-      .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
       .on('mouseover', (event, d) => {
+        this._showTooltip(event, d, distanceUnit);
+      })
+      .on('focus', (event, d) => {
         this._showTooltip(event, d, distanceUnit);
       })
       .on('mousemove', (event) => {
         this._moveTooltip(event);
       })
-      .on('mouseout', () => this._hideTooltip());
+      .on('mouseout', () => this._hideTooltip())
+      .on('blur', () => this._hideTooltip());
+
+    if (animate) {
+      entityDots
+        .attr('cx', 0)
+        .attr('cy', 0)
+        .transition()
+        .duration(duration)
+        .ease(easeCubicOut)
+        .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
+        .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
+    } else {
+      entityDots
+        .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
+        .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
+    }
 
     if (this._config.points_clickable !== false) {
       entityDots.on('click', (event, d) => {
@@ -305,17 +412,22 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _renderLegend(): TemplateResult {
-    const position = this._config.legend_position || 'bottom';
-    const showDistance = this._config.legend_show_distance === true;
+  private _renderLegend(animate = false): TemplateResult {
+    const position = this._config.legend_position ?? 'bottom';
+    const showDistance = this._config.legend_show_distance !== false;
     const distanceUnit = this.hass.config.unit_system.length || 'km';
+    const duration = this._config.animation_duration ?? 750;
+    const style = animate ? `animation-duration: ${duration}ms; animation-delay: ${duration * 0.25}ms` : '';
 
     return html`
-      <div class="legend ${position}">
+      <div class="legend ${position} ${animate ? 'fade-in' : ''}" style=${style}>
         ${this._points.map((point) => {
           return html`
-            <div
+            <button
+              type="button"
               class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
+              aria-pressed="${point.entity_id === this._pulsingEntityId}"
+              aria-label="Toggle pulse for ${point.name}"
               @click=${() => this._handleLegendItemClick(point)}
             >
               <span
@@ -327,7 +439,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
                   ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
                   : nothing}
               </div>
-            </div>
+            </button>
           `;
         })}
       </div>
@@ -401,8 +513,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
 
     const legendPosition = this._config.legend_position || 'bottom';
-    const showLegend = this._config.show_legend;
-    const legendTemplate = showLegend ? this._renderLegend() : nothing;
+    const showLegend = this._config.show_legend !== false;
+    const shouldAnimate =
+      this._config.animation_enabled !== false && !this.editMode && !this._hasAnimated && this._points.length > 0;
+    const legendTemplate = showLegend ? this._renderLegend(shouldAnimate) : nothing;
 
     const isBesideLegend = ['left', 'right'].includes(legendPosition);
     const isBottomLegend = legendPosition === 'bottom';
@@ -425,6 +539,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
         </div>
       </ha-card>
     `;
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._hasAnimated = false;
   }
 
   protected willUpdate(changedProperties: Map<string | number | symbol, unknown>): void {
@@ -459,7 +578,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
     if (this._config && this.hass) {
-      this._renderRadarChart(this._points);
+      const shouldAnimate =
+        this._config.animation_enabled !== false && !this.editMode && !this._hasAnimated && this._points.length > 0;
+      this._renderRadarChart(this._points, shouldAnimate);
+      if (shouldAnimate) {
+        this._hasAnimated = true;
+      }
     }
   }
 

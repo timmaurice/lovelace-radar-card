@@ -69,18 +69,27 @@
 
 @keyframes pulse {
   0% {
-    r: 3;
+    transform: scale(1);
   }
+
   50% {
-    r: 7.5;
+    transform: scale(2.5);
   }
+
   100% {
-    r: 3;
+    transform: scale(1);
   }
 }
 
 .entity-dot.pulsing {
   animation: pulse 1.5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.entity-dot:focus-visible {
+  stroke: var(--accent-color);
+  stroke-width: 1.5px;
 }
 
 .legend {
@@ -103,23 +112,48 @@
     overflow-y: auto;
     pointer-events: auto;
   }
+
+  &.fade-in {
+    animation-fill-mode: forwards;
+    animation-name: fadeIn;
+    animation-timing-function: ease-in-out;
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
 }
 
 .legend-item {
   align-items: center;
+  background: transparent;
+  border: none;
   border-radius: 4px;
+  color: inherit;
   cursor: pointer;
   display: flex;
+  font-family: inherit;
+  font-size: inherit;
   gap: 8px;
   padding: 2px 4px;
+  text-align: inherit;
   transition: background-color 0.3s ease;
-}
 
-.legend-item:hover {
-  background-color: color-mix(in srgb, var(--secondary-text-color) 10%, transparent);
-}
-.legend-item.active {
-  background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
+  &:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+  }
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--secondary-text-color) 10%, transparent);
+  }
+
+  &.active {
+    background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
+  }
 }
 
 .legend-color {

@@ -1,22 +1,30 @@
 {
   "editor": {
+    "data": "Daten",
     "title": "Titel (Optional)",
+    "auto_radar_max_distance": "Auto. max. Entfernung",
+    "auto_radar_max_distance_help": "Passt die maximale Entfernung des Radars automatisch an die am weitesten entfernte Entität an. Wenn deaktiviert, können Sie eine feste Entfernung einstellen.",
+    "radar_max_distance": "Radar max. Entfernung",
+    "center_coords_override": "Mittelpunktkoordinaten überschreiben",
+    "center_coords_override_help": "Standardmäßig ist das Radar auf den Standort deines Home Assistant zentriert. Verwende diese Felder, um einen anderen Mittelpunkt festzulegen, zum Beispiel deinen Arbeitsplatz.",
+    "center_latitude": "Mittelpunkt-Breitengrad (Überschreiben)",
+    "center_longitude": "Mittelpunkt-Längengrad (Überschreiben)",
     "entities": "Entitäten",
     "entity": "Entität",
     "name": "Name (Optional)",
     "color": "Farbe (Optional)",
     "add_entity": "Entität hinzufügen",
-    "data": "Daten",
-    "auto_radar_max_distance": "Auto. max. Entfernung",
-    "radar_max_distance": "Radar max. Entfernung",
-    "center_latitude": "Mittelpunkt-Breitengrad (Überschreiben)",
-    "center_longitude": "Mittelpunkt-Längengrad (Überschreiben)",
     "appearance": "Darstellung",
     "grid_color": "Gitterfarbe (Optional)",
     "font_color": "Schriftfarbe (Optional)",
     "entity_color": "Standard Entitätsfarbe (Optional)",
+    "color_contrast_help": "Stellen Sie für die Barrierefreiheit sicher, dass alle Farben einen ausreichenden Kontrast zum Kartenhintergrund haben.",
     "show_grid_labels": "Gitter-Entfernungsbeschriftungen anzeigen",
-    "points_clickable": "Punkte klickbar machen",
+    "interaction": "Interaktion",
+    "points_clickable": "Entität bei Klick öffnen",
+    "points_clickable_help": "Öffnet den 'mehr-info' Dialog, wenn ein Punkt auf dem Radar angeklickt wird.",
+    "legend": "Legende",
+    "legend_pulse_help": "Ein Klick auf eine Entität in der Legende lässt den zugehörigen Punkt auf dem Radar pulsieren, um ihn leichter zu finden.",
     "show_legend": "Legende anzeigen",
     "legend_position": "Legendenposition",
     "legend_positions": {
@@ -24,7 +32,10 @@
       "right": "Rechts",
       "left": "Links"
     },
-    "legend_show_distance": "Entfernung in Legende anzeigen"
+    "legend_show_distance": "Entfernung in Legende anzeigen",
+    "animation": "Animation",
+    "animation_enabled": "Eingangsanimation aktivieren",
+    "animation_duration": "Animationsdauer (ms)"
   },
   "card": {
     "distance": "Entfernung",

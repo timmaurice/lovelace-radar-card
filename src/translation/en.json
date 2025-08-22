@@ -1,22 +1,30 @@
 {
   "editor": {
+    "data": "Data",
     "title": "Title (Optional)",
+    "auto_radar_max_distance": "Auto Max Distance",
+    "auto_radar_max_distance_help": "Automatically adjusts the radar's maximum distance to fit the furthest entity. If disabled, you can set a fixed distance.",
+    "radar_max_distance": "Radar Max Distance",
+    "center_coords_override": "Center Coordinate Override",
+    "center_coords_override_help": "By default, the radar is centered on your Home Assistant's location. Use these fields to specify a different center point, for example, your workplace.",
+    "center_latitude": "Center Latitude (Override)",
+    "center_longitude": "Center Longitude (Override)",
     "entities": "Entities",
     "entity": "Entity",
     "name": "Name (Optional)",
     "color": "Color (Optional)",
     "add_entity": "Add Entity",
-    "data": "Data",
-    "auto_radar_max_distance": "Auto Max Distance",
-    "radar_max_distance": "Radar Max Distance",
-    "center_latitude": "Center Latitude (Override)",
-    "center_longitude": "Center Longitude (Override)",
     "appearance": "Appearance",
     "grid_color": "Grid Color (Optional)",
     "font_color": "Font Color (Optional)",
     "entity_color": "Default Entity Color (Optional)",
+    "color_contrast_help": "For accessibility, ensure all colors have sufficient contrast against the card background.",
     "show_grid_labels": "Show Grid Distance Labels",
-    "points_clickable": "Make points clickable",
+    "interaction": "Interaction",
+    "points_clickable": "Open entity on click",
+    "points_clickable_help": "Opens the 'more-info' dialog when a point on the radar is clicked.",
+    "legend": "Legend",
+    "legend_pulse_help": "Clicking an entity in the legend will make its dot on the radar pulse, making it easier to locate.",
     "show_legend": "Show Legend",
     "legend_position": "Legend Position",
     "legend_positions": {
@@ -24,7 +32,10 @@
       "right": "Right",
       "left": "Left"
     },
-    "legend_show_distance": "Show distance in legend"
+    "legend_show_distance": "Show distance in legend",
+    "animation": "Animation",
+    "animation_enabled": "Enable entry animation",
+    "animation_duration": "Animation Duration (ms)"
   },
   "card": {
     "distance": "Distance",

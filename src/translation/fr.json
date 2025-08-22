@@ -1,0 +1,53 @@
+{
+  "editor": {
+    "data": "Données",
+    "title": "Titre (Optionnel)",
+    "auto_radar_max_distance": "Distance max. auto",
+    "auto_radar_max_distance_help": "Ajuste automatiquement la distance maximale du radar pour s'adapter à l'entité la plus éloignée. Si désactivé, vous pouvez définir une distance fixe.",
+    "radar_max_distance": "Distance max. du radar",
+    "center_coords_override": "Remplacement des coordonnées du centre",
+    "center_coords_override_help": "Par défaut, le radar est centré sur l'emplacement de votre Home Assistant. Utilisez ces champs pour spécifier un point central différent, par exemple, votre lieu de travail.",
+    "center_latitude": "Latitude du centre (Remplacement)",
+    "center_longitude": "Longitude du centre (Remplacement)",
+    "entities": "Entités",
+    "entity": "Entité",
+    "name": "Nom (Optionnel)",
+    "color": "Couleur (Optionnel)",
+    "add_entity": "Ajouter une entité",
+    "appearance": "Apparence",
+    "grid_color": "Couleur de la grille (Optionnel)",
+    "font_color": "Couleur de la police (Optionnel)",
+    "entity_color": "Couleur par défaut de l'entité (Optionnel)",
+    "color_contrast_help": "Pour l'accessibilité, assurez-vous que toutes les couleurs ont un contraste suffisant avec l'arrière-plan de la carte.",
+    "show_grid_labels": "Afficher les étiquettes de distance de la grille",
+    "interaction": "Interaction",
+    "points_clickable": "Ouvrir l'entité au clic",
+    "points_clickable_help": "Ouvre la boîte de dialogue 'plus d'infos' lorsqu'un point sur le radar est cliqué.",
+    "legend": "Légende",
+    "legend_pulse_help": "Cliquer sur une entité dans la légende fera pulser son point sur le radar, facilitant sa localisation.",
+    "show_legend": "Afficher la légende",
+    "legend_position": "Position de la légende",
+    "legend_positions": {
+      "bottom": "Bas",
+      "right": "Droite",
+      "left": "Gauche"
+    },
+    "legend_show_distance": "Afficher la distance dans la légende",
+    "animation": "Animation",
+    "animation_enabled": "Activer l'animation d'entrée",
+    "animation_duration": "Durée de l'animation (ms)"
+  },
+  "card": {
+    "distance": "Distance",
+    "azimuth": "Azimut",
+    "no_home_location": "L'emplacement du centre n'est pas défini dans Home Assistant et aucune coordonnée personnalisée n'est fournie.",
+    "incomplete_center_coords": "Veuillez fournir à la fois la latitude et la longitude du centre.",
+    "no_entities": "Aucune entité à afficher",
+    "directions": {
+      "N": "N",
+      "E": "E",
+      "S": "S",
+      "W": "O"
+    }
+  }
+}

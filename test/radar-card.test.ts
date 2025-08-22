@@ -214,37 +214,45 @@ describe('RadarCard', () => {
       } as HassEntity;
     });
 
-    it('should not render a legend by default', async () => {
+    it('should render a legend by default', async () => {
       element.hass = hass;
       element.setConfig(config);
+      await element.updateComplete;
+
+      const legend = element.shadowRoot?.querySelector('.legend');
+      expect(legend).not.toBeNull();
+    });
+
+    it('should not render a legend when show_legend is false', async () => {
+      element.hass = hass;
+      element.setConfig({ ...config, show_legend: false });
       await element.updateComplete;
 
       const legend = element.shadowRoot?.querySelector('.legend');
       expect(legend).toBeNull();
     });
 
-    it('should render a legend when show_legend is true', async () => {
+    it('should show distance in legend by default', async () => {
       element.hass = hass;
-      element.setConfig({ ...config, show_legend: true });
-      await element.updateComplete;
-
-      const legend = element.shadowRoot?.querySelector('.legend');
-      expect(legend).not.toBeNull();
-      expect(legend?.childElementCount).toBe(1);
-    });
-
-    it('should show distance in legend when legend_show_distance is true', async () => {
-      element.hass = hass;
-      element.setConfig({ ...config, show_legend: true, legend_show_distance: true });
+      element.setConfig({ ...config }); // show_legend and legend_show_distance are default true
       await element.updateComplete;
 
       const legendText = element.shadowRoot?.querySelector('.legend-text-container');
       expect(legendText?.textContent).toContain('m'); // distance is small, should be in meters
     });
 
+    it('should not show distance in legend when legend_show_distance is false', async () => {
+      element.hass = hass;
+      element.setConfig({ ...config, legend_show_distance: false });
+      await element.updateComplete;
+
+      const legendText = element.shadowRoot?.querySelector('.legend-text-container');
+      expect(legendText?.textContent).not.toContain('m');
+    });
+
     it('should position the legend at the bottom by default', async () => {
       element.hass = hass;
-      element.setConfig({ ...config, show_legend: true });
+      element.setConfig({ ...config }); // show_legend is default true
       await element.updateComplete;
 
       const cardContent = element.shadowRoot?.querySelector('.card-content');
@@ -255,7 +263,7 @@ describe('RadarCard', () => {
 
     it('should position the legend on the right', async () => {
       element.hass = hass;
-      element.setConfig({ ...config, show_legend: true, legend_position: 'right' });
+      element.setConfig({ ...config, legend_position: 'right' }); // show_legend is default true
       await element.updateComplete;
 
       const cardContent = element.shadowRoot?.querySelector('.card-content');
@@ -267,7 +275,7 @@ describe('RadarCard', () => {
 
     it('should position the legend on the left', async () => {
       element.hass = hass;
-      element.setConfig({ ...config, show_legend: true, legend_position: 'left' });
+      element.setConfig({ ...config, legend_position: 'left' }); // show_legend is default true
       await element.updateComplete;
 
       const cardContent = element.shadowRoot?.querySelector('.card-content');
@@ -279,7 +287,7 @@ describe('RadarCard', () => {
 
     it('should pulse a dot when its legend item is clicked', async () => {
       element.hass = hass;
-      element.setConfig({ ...config, show_legend: true });
+      element.setConfig({ ...config }); // show_legend is default true
       await element.updateComplete;
 
       const legendItem = element.shadowRoot?.querySelector('.legend-item') as HTMLElement;
@@ -330,14 +338,14 @@ describe('RadarCard', () => {
   });
 
   describe('Radar Scaling', () => {
-    it('should use radar_max_distance for scale by default', async () => {
+    it('should use radar_max_distance for scale when auto_radar_max_distance is false', async () => {
       hass.states['device_tracker.test_device'] = {
         entity_id: 'device_tracker.test_device',
         state: 'home',
         attributes: { latitude: 52.52, longitude: 13.41, friendly_name: 'Test Device' },
       } as HassEntity;
       element.hass = hass;
-      element.setConfig({ ...config, radar_max_distance: 50 });
+      element.setConfig({ ...config, auto_radar_max_distance: false, radar_max_distance: 50 });
       await element.updateComplete;
 
       const gridLabels = element.shadowRoot?.querySelectorAll<SVGTextElement>('.grid-label');
@@ -347,7 +355,7 @@ describe('RadarCard', () => {
       expect(lastLabel?.textContent).toContain('50');
     });
 
-    it('should auto scale when auto_radar_max_distance is true', async () => {
+    it('should auto scale by default', async () => {
       hass.states['device_tracker.test_device_far'] = {
         entity_id: 'device_tracker.test_device_far',
         state: 'not_home',
@@ -363,7 +371,7 @@ describe('RadarCard', () => {
       element.setConfig({
         ...config,
         entities: ['device_tracker.test_device_far', 'device_tracker.test_device_close'],
-        auto_radar_max_distance: true,
+        animation_enabled: false,
       });
       await element.updateComplete;
 
