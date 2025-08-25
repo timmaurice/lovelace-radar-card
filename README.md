@@ -4,7 +4,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/lovelace-radar-card?style=flat-square)
 [![GH-downloads](https://img.shields.io/github/downloads/timmaurice/lovelace-radar-card/total?style=flat-square)](https://github.com/timmaurice/lovelace-radar-card/releases)
 [![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/lovelace-radar-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-radar-card/commits/master)
-[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/lovelace-radar-card.svg?color=red&style=flat-square)](https://github.com/timmaurice/lovelace-radar-card)
+[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/lovelace-radar-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-radar-card)
 ![GitHub](https://img.shields.io/github/license/timmaurice/lovelace-radar-card?style=flat-square)
 
 ## Features
