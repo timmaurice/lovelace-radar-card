@@ -43,12 +43,13 @@ interface CustomWindow extends Window {
   loadCardHelpers?: () => Promise<LovelaceCardHelpers>;
 }
 
-interface RadarPoint {
+export interface RadarPoint {
   distance: number;
   azimuth: number;
   name?: string;
   entity_id?: string;
   color?: string;
+  isMoving?: boolean;
 }
 
 type LovelaceCardConstructor = {
@@ -71,6 +72,18 @@ export class RadarCard extends LitElement implements LovelaceCard {
   @state() private _pulsingEntityId: string | null = null;
   @state() private _error: string | null = null;
   private _hasAnimated = false;
+  @state() private _isTestingAnimation = false;
+
+  private _runTestAnimation = (): void => {
+    if (this.editMode && this._config.animation_enabled !== false) {
+      this._renderRadarChart(this._points, true);
+      this._isTestingAnimation = true;
+      const duration = this._config.animation_duration ?? 750;
+      setTimeout(() => {
+        this._isTestingAnimation = false;
+      }, duration + 100);
+    }
+  };
 
   public setConfig(config: RadarCardConfig): void {
     if (!config || !config.entities || !Array.isArray(config.entities) || config.entities.length === 0) {
@@ -351,6 +364,23 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .style('font-size', '10px');
     }
 
+    // Plot the pings for moving entities
+    const entityPings = svg
+      .selectAll<SVGCircleElement, RadarPoint>('circle.entity-ping')
+      .data(
+        points.filter((p) => p.isMoving && this._config.moving_animation_enabled === true),
+        (d, i) => d.entity_id || d.name || i,
+      )
+      .join(
+        (enter) =>
+          enter
+            .insert('circle', 'circle.entity-dot') // Insert before the actual entity dots
+            .attr('class', 'entity-ping'),
+        (update) => update,
+        (exit) => exit.remove(),
+      )
+      .style('stroke', (d) => d.color || this._config.entity_color || 'var(--info-color)');
+
     // Plot the entities
     const entityDots = svg
       .selectAll<SVGCircleElement, RadarPoint>('circle.entity-dot')
@@ -397,8 +427,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .ease(easeCubicOut)
         .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
+
+      entityPings
+        .attr('cx', 0)
+        .attr('cy', 0)
+        .transition()
+        .duration(duration)
+        .ease(easeCubicOut)
+        .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
+        .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
     } else {
       entityDots
+        .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
+        .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
+
+      entityPings
         .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
     }
@@ -464,6 +507,17 @@ export class RadarCard extends LitElement implements LovelaceCard {
         if (!stateObj || stateObj.attributes.latitude == null || stateObj.attributes.longitude == null) {
           return null;
         }
+        const movingActivities = this._config.moving_animation_activities || [
+          'Automotive',
+          'Cycling',
+          'Walking',
+          'Driving',
+        ];
+        const attribute = this._config.moving_animation_attribute || 'activity';
+        const activity = stateObj.attributes[attribute];
+        const isMoving =
+          typeof activity === 'string' && movingActivities.map((a) => a.toLowerCase()).includes(activity.toLowerCase());
+
         const distance = getDistance(
           home.lat,
           home.lon,
@@ -484,6 +538,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
           name: entityConf.name || stateObj.attributes.friendly_name || entityId,
           entity_id: entityId,
           color: entityConf.color,
+          isMoving: isMoving,
         };
       })
       .filter((p): p is RadarPoint => p !== null);
@@ -514,9 +569,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
     const legendPosition = this._config.legend_position || 'bottom';
     const showLegend = this._config.show_legend !== false;
-    const shouldAnimate =
+    const shouldAnimateOnLoad =
       this._config.animation_enabled !== false && !this.editMode && !this._hasAnimated && this._points.length > 0;
-    const legendTemplate = showLegend ? this._renderLegend(shouldAnimate) : nothing;
+    const shouldAnimateLegend = shouldAnimateOnLoad || (this.editMode && this._isTestingAnimation);
+    const legendTemplate = showLegend ? this._renderLegend(shouldAnimateLegend) : nothing;
 
     const isBesideLegend = ['left', 'right'].includes(legendPosition);
     const isBottomLegend = legendPosition === 'bottom';
@@ -541,8 +597,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  public connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('radar-card-test-animation', this._runTestAnimation);
+  }
+
   public disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener('radar-card-test-animation', this._runTestAnimation);
     this._hasAnimated = false;
   }
 
@@ -578,6 +640,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
     if (this._config && this.hass) {
+      // If the only thing that changed is the testing state, don't re-render the chart.
+      // The test function itself triggers the chart animation.
+      if (changedProperties.size === 1 && changedProperties.has('_isTestingAnimation')) {
+        return;
+      }
+
       const shouldAnimate =
         this._config.animation_enabled !== false && !this.editMode && !this._hasAnimated && this._points.length > 0;
       this._renderRadarChart(this._points, shouldAnimate);

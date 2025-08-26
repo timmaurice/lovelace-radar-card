@@ -18,6 +18,7 @@
 
 - Automatically scales the radar distance to fit all entities, or set a fixed maximum distance.
 - Optional, clear distance labels on the grid rings for quick reference.
+- Optional "radar ping" animation for entities that are considered to be moving.
 
 ### Rich Interactivity
 
@@ -64,25 +65,28 @@ For those who prefer YAML, the options are documented below.
 
 ### Main Configuration
 
-| Name                      | Type    | Default                     | Description                                                                                              |
-| ------------------------- | ------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `type`                    | string  | **Required**                | `custom:radar-card`                                                                                      |
-| `title`                   | string  | `''`                        | The title of the card.                                                                                   |
-| `entities`                | array   | **Required**                | A list of entity objects to display on the radar.                                                        |
-| `auto_radar_max_distance` | boolean | `true`                      | Automatically adjust the maximum radar distance based on the furthest entity.                            |
-| `radar_max_distance`      | number  | `100`                       | The maximum distance shown on the radar (in km or mi). Ignored if `auto_radar_max_distance` is `true`.   |
-| `grid_color`              | string  | `var(--primary-text-color)` | Color for the radar grid lines and cardinal points.                                                      |
-| `font_color`              | string  | `var(--primary-text-color)` | Color for the cardinal point labels (N, E, S, W).                                                        |
-| `entity_color`            | string  | `var(--info-color)`         | Default color for the entity points on the radar.                                                        |
-| `show_grid_labels`        | boolean | `true`                      | If `true`, shows distance labels on the grid circles.                                                    |
-| `points_clickable`        | boolean | `true`                      | If `true`, clicking an entity point opens the more-info dialog. Set to `false` to disable this behavior. |
-| `show_legend`             | boolean | `true`                      | Show a legend with entity colors and names below the radar.                                              |
-| `legend_position`         | string  | `bottom`                    | Position of the legend. Can be `bottom`, `right`, or `left`.                                             |
-| `legend_show_distance`    | boolean | `true`                      | If `true`, shows the entity's distance in the legend.                                                    |
-| `center_latitude`         | number  | (from Home Assistant)       | Override the latitude of the center location of the radar. Requires `center_longitude`.                  |
-| `center_longitude`        | number  | (from Home Assistant)       | Override the longitude of the center location of the radar. Requires `center_latitude`.                  |
-| `animation_enabled`       | boolean | `true`                      | Enable the initial entry animation.                                                                      |
-| `animation_duration`      | number  | `750`                       | Duration of the animation in milliseconds.                                                               |
+| Name                          | Type    | Default                                           | Description                                                                                                |
+| ----------------------------- | ------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `type`                        | string  | **Required**                                      | `custom:radar-card`                                                                                        |
+| `title`                       | string  | `''`                                              | The title of the card.                                                                                     |
+| `entities`                    | array   | **Required**                                      | A list of entity objects to display on the radar.                                                          |
+| `auto_radar_max_distance`     | boolean | `true`                                            | Automatically adjust the maximum radar distance based on the furthest entity.                              |
+| `radar_max_distance`          | number  | `100`                                             | The maximum distance shown on the radar (in km or mi). Ignored if `auto_radar_max_distance` is `true`.     |
+| `grid_color`                  | string  | `var(--primary-text-color)`                       | Color for the radar grid lines and cardinal points.                                                        |
+| `font_color`                  | string  | `var(--primary-text-color)`                       | Color for the cardinal point labels (N, E, S, W).                                                          |
+| `entity_color`                | string  | `var(--info-color)`                               | Default color for the entity points on the radar.                                                          |
+| `show_grid_labels`            | boolean | `true`                                            | If `true`, shows distance labels on the grid circles.                                                      |
+| `points_clickable`            | boolean | `true`                                            | If `true`, clicking an entity point opens the more-info dialog. Set to `false` to disable this behavior.   |
+| `show_legend`                 | boolean | `true`                                            | Show a legend with entity colors and names below the radar.                                                |
+| `legend_position`             | string  | `bottom`                                          | Position of the legend. Can be `bottom`, `right`, or `left`.                                               |
+| `legend_show_distance`        | boolean | `true`                                            | If `true`, shows the entity's distance in the legend.                                                      |
+| `center_latitude`             | number  | (from Home Assistant)                             | Override the latitude of the center location of the radar. Requires `center_longitude`.                    |
+| `center_longitude`            | number  | (from Home Assistant)                             | Override the longitude of the center location of the radar. Requires `center_latitude`.                    |
+| `animation_enabled`           | boolean | `true`                                            | Enable the initial entry animation.                                                                        |
+| `animation_duration`          | number  | `750`                                             | Duration of the animation in milliseconds.                                                                 |
+| `moving_animation_enabled`    | boolean | `false`                                           | Enable a radar-like ping animation for moving entities.                                                    |
+| `moving_animation_attribute`  | string  | `activity`                                        | The entity attribute to check for the moving state. Requires `moving_animation_enabled` to be `true`.      |
+| `moving_animation_activities` | array   | `['Automotive', 'Cycling', 'Walking', 'Driving']` | A list of values for the `moving_animation_attribute` that should trigger the animation. Case-insensitive. |
 
 ### Entity Configuration (within `entities` list)
 

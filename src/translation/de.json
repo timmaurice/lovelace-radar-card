@@ -35,7 +35,14 @@
     "legend_show_distance": "Entfernung in Legende anzeigen",
     "animation": "Animation",
     "animation_enabled": "Eingangsanimation aktivieren",
-    "animation_duration": "Animationsdauer (ms)"
+    "animation_duration": "Animationsdauer (ms)",
+    "test_animation": "Animation testen",
+    "moving_animation_enabled": "Bewegungsanimation aktivieren",
+    "moving_animation_enabled_help": "Fügt eine radarähnliche Ping-Animation für Entitäten hinzu, die sich gerade bewegen (z. B. gehen, fahren). Erfordert, dass die Entität ein 'activity'-Attribut hat.",
+    "moving_animation_activities": "Bewegungsaktivitäten (kommagetrennt)",
+    "moving_animation_activities_help": "Liste der Aktivitäten, die die Bewegungsanimation auslösen. Standard: Automotive, Cycling, Walking, Driving.",
+    "moving_animation_attribute": "Bewegungsattribut (Optional)",
+    "moving_animation_attribute_help": "Das Entitätsattribut, das auf den Aktivitätswert überprüft werden soll. Standard: 'activity'."
   },
   "card": {
     "distance": "Entfernung",

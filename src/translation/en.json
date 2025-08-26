@@ -35,7 +35,14 @@
     "legend_show_distance": "Show distance in legend",
     "animation": "Animation",
     "animation_enabled": "Enable entry animation",
-    "animation_duration": "Animation Duration (ms)"
+    "animation_duration": "Animation Duration (ms)",
+    "test_animation": "Test Animation",
+    "moving_animation_enabled": "Enable moving animation",
+    "moving_animation_enabled_help": "Adds a radar-like ping animation to entities that are currently moving (e.g., walking, driving). Requires the entity to have an 'activity' attribute.",
+    "moving_animation_activities": "Moving Activities (comma-separated)",
+    "moving_animation_activities_help": "List of activities that trigger the moving animation. Defaults to: Automotive, Cycling, Walking, Driving.",
+    "moving_animation_attribute": "Moving Attribute (Optional)",
+    "moving_animation_attribute_help": "The entity attribute to check for the activity value. Defaults to 'activity'."
   },
   "card": {
     "distance": "Distance",

@@ -105,6 +105,14 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       } else {
         newConfig.animation_enabled = false;
       }
+    } else if (configValue === 'moving_animation_enabled') {
+      if (value) {
+        newConfig.moving_animation_enabled = true;
+      } else {
+        delete newConfig.moving_animation_enabled;
+        delete newConfig.moving_animation_activities;
+        delete newConfig.moving_animation_attribute;
+      }
     } else if (configValue === 'show_legend') {
       if (value) {
         // is checked, so it's true. true is the new default, so we remove it.
@@ -123,6 +131,21 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       }
     } else if (value === 'bottom' && configValue === 'legend_position') {
       delete newConfig.legend_position;
+    } else if (configValue === 'moving_animation_activities') {
+      if (typeof value === 'string' && value.trim()) {
+        newConfig.moving_animation_activities = value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      } else {
+        delete newConfig.moving_animation_activities;
+      }
+    } else if (configValue === 'moving_animation_attribute') {
+      if (typeof value === 'string' && value.trim()) {
+        newConfig.moving_animation_attribute = value;
+      } else {
+        delete newConfig.moving_animation_attribute;
+      }
     } else if (value === '' || value === false || value === undefined || (Array.isArray(value) && value.length === 0)) {
       delete newConfig[configValue];
     } else {
@@ -300,6 +323,10 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     const entities = [...this._getEntities()];
     entities[index] = { ...entities[index], entity: target.value };
     fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+  }
+
+  private _testAnimation(): void {
+    fireEvent(this, 'radar-card-test-animation');
   }
 
   private _editEntity(index: number): void {
@@ -659,13 +686,64 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             </div>
             ${this._config.animation_enabled !== false
               ? html`
+                  <div class="duration-with-test-button">
+                    <ha-textfield
+                      .label=${localize(this.hass, 'component.radar-card.editor.animation_duration')}
+                      type="number"
+                      .value=${this._config.animation_duration || ''}
+                      .configValue=${'animation_duration'}
+                      @input=${this._valueChanged}
+                      .suffix=${'ms'}
+                    ></ha-textfield>
+                    <ha-button @click=${this._testAnimation}>
+                      ${localize(this.hass, 'component.radar-card.editor.test_animation')}
+                    </ha-button>
+                  </div>
+                `
+              : nothing}
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.moving_animation_enabled === true}
+                .configValue=${'moving_animation_enabled'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <div class="label-with-help">
+                <label class="mdc-label"
+                  >${localize(this.hass, 'component.radar-card.editor.moving_animation_enabled')}</label
+                >
+                <ha-icon
+                  class="help-icon"
+                  icon="mdi:help-circle-outline"
+                  @click=${() => this._toggleHelp('moving_animation_enabled')}
+                ></ha-icon>
+              </div>
+            </div>
+            ${this._showHelpFor.has('moving_animation_enabled')
+              ? html`
+                  <div class="help-text">
+                    ${localize(this.hass, 'component.radar-card.editor.moving_animation_enabled_help')}
+                  </div>
+                `
+              : nothing}
+            ${this._config.moving_animation_enabled === true
+              ? html`
                   <ha-textfield
-                    .label=${localize(this.hass, 'component.radar-card.editor.animation_duration')}
-                    type="number"
-                    .value=${this._config.animation_duration || ''}
-                    .configValue=${'animation_duration'}
+                    .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute')}
+                    .value=${this._config.moving_animation_attribute || ''}
+                    .configValue=${'moving_animation_attribute'}
+                    .placeholder=${'activity'}
                     @input=${this._valueChanged}
-                    .suffix=${'ms'}
+                    .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute_help')}
+                    persistent-helper
+                  ></ha-textfield>
+                  <ha-textfield
+                    .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities')}
+                    .value=${(this._config.moving_animation_activities || []).join(', ')}
+                    .configValue=${'moving_animation_activities'}
+                    .placeholder=${'Automotive, Cycling, Walking, Driving'}
+                    @input=${this._valueChanged}
+                    .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities_help')}
+                    persistent-helper
                   ></ha-textfield>
                 `
               : nothing}
@@ -677,5 +755,17 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
 
   static styles = css`
     ${unsafeCSS(editorStyles)}
+    .duration-with-test-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .duration-with-test-button ha-textfield {
+      flex-grow: 1;
+    }
+    .duration-with-test-button ha-button {
+      flex-shrink: 0;
+      --mdc-button-padding-horizontal: 8px;
+    }
   `;
 }

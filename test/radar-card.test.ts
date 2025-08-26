@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../src/radar-card';
-import type { RadarCard } from '../src/radar-card';
+import type { RadarCard, RadarPoint } from '../src/radar-card';
 import { HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
 
@@ -418,6 +418,93 @@ describe('RadarCard', () => {
       const error = element.shadowRoot?.querySelector('.warning');
       expect(error).not.toBeNull();
       expect(error?.textContent).toBe('incomplete_center_coords');
+    });
+  });
+
+  describe('Animation', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: {
+          latitude: 52.53,
+          longitude: 13.42,
+          friendly_name: 'Moving Device',
+          activity: 'Walking',
+        },
+      } as HassEntity;
+    });
+
+    it('should not render a ping animation by default', async () => {
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
+      expect(ping).toBeNull();
+    });
+
+    it('should render a ping animation when enabled and entity is moving', async () => {
+      element.hass = hass;
+      element.setConfig({ ...config, moving_animation_enabled: true });
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
+      expect(ping).not.toBeNull();
+    });
+
+    it('should not render a ping animation when enabled but entity is not moving', async () => {
+      hass.states['device_tracker.test_device'].attributes.activity = 'Stationary';
+      element.hass = hass;
+      element.setConfig({ ...config, moving_animation_enabled: true });
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('.entity-ping');
+      expect(ping).toBeNull();
+    });
+
+    it('should respect custom moving_animation_attribute', async () => {
+      hass.states['device_tracker.test_device'].attributes.motion_state = 'running';
+      delete hass.states['device_tracker.test_device'].attributes.activity;
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        moving_animation_enabled: true,
+        moving_animation_attribute: 'motion_state',
+        moving_animation_activities: ['running'],
+      });
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
+      expect(ping).not.toBeNull();
+    });
+
+    it('should match activities case-insensitively', async () => {
+      hass.states['device_tracker.test_device'].attributes.activity = 'DRIVING';
+      element.hass = hass;
+      element.setConfig({ ...config, moving_animation_enabled: true }); // Default activities include 'Driving'
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
+      expect(ping).not.toBeNull();
+    });
+
+    it('should trigger animation when test event is fired in edit mode', async () => {
+      const renderSpy = vi.spyOn(
+        element as unknown as { _renderRadarChart: (points: RadarPoint[], animate?: boolean) => void },
+        '_renderRadarChart',
+      );
+      element.hass = hass;
+      element.setConfig(config);
+      element.editMode = true;
+      await element.updateComplete;
+
+      renderSpy.mockClear(); // Clear calls from initial render
+
+      window.dispatchEvent(new CustomEvent('radar-card-test-animation'));
+      await element.updateComplete;
+
+      expect(renderSpy).toHaveBeenCalledWith(expect.anything(), true);
     });
   });
 });

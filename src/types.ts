@@ -91,4 +91,7 @@ export interface RadarCardConfig extends LovelaceCardConfig {
   center_longitude?: number;
   animation_enabled?: boolean;
   animation_duration?: number;
+  moving_animation_enabled?: boolean;
+  moving_animation_activities?: string[];
+  moving_animation_attribute?: string;
 }

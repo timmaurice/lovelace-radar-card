@@ -92,6 +92,24 @@
   stroke-width: 1.5px;
 }
 
+.entity-dot:focus-visible {
+  stroke: var(--accent-color);
+  stroke-width: 1.5px;
+}
+
+@keyframes radar-ping {
+  0% {
+    r: 3;
+    stroke-opacity: 0.8;
+    stroke-width: 3px;
+  }
+  100% {
+    r: 30;
+    stroke-opacity: 0;
+    stroke-width: 0;
+  }
+}
+
 .legend {
   display: flex;
   gap: 8px;
@@ -179,4 +197,15 @@
 
 .legend-distance {
   font-style: italic;
+}
+.entity-ping {
+  animation: radar-ping 2s ease-out infinite;
+  fill: none;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+.entity-dot:focus-visible {
+  stroke: var(--accent-color);
+  stroke-width: 1.5px;
 }
