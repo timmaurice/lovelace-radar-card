@@ -507,4 +507,93 @@ describe('RadarCard', () => {
       expect(renderSpy).toHaveBeenCalledWith(expect.anything(), true);
     });
   });
+  describe('Zone Entity Center', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'home',
+        attributes: {
+          latitude: 52.52,
+          longitude: 13.41,
+          friendly_name: 'Test Device',
+        },
+      } as HassEntity;
+      hass.states['zone.work'] = {
+        entity_id: 'zone.work',
+        state: 'zoning',
+        attributes: {
+          latitude: 48.8566,
+          longitude: 2.3522,
+          friendly_name: 'Work',
+          radius: 100,
+        },
+      } as HassEntity;
+    });
+
+    it('should use zone entity for center when provided', async () => {
+      element.hass = hass;
+      element.setConfig({ ...config, location_zone_entity: 'zone.work' });
+      await element.updateComplete;
+
+      const error = element.shadowRoot?.querySelector('.warning');
+      expect(error).toBeNull();
+
+      // Check if a point is rendered, which means coordinates were valid
+      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
+      expect(entityDot).not.toBeNull();
+    });
+
+    it('should show an error if both zone and manual coordinates are provided', async () => {
+      element.hass = hass;
+      element.setConfig({ ...config, location_zone_entity: 'zone.work', center_latitude: 40, center_longitude: 40 });
+      await element.updateComplete;
+
+      const error = element.shadowRoot?.querySelector('.warning');
+      expect(error).not.toBeNull();
+      expect(error?.textContent).toBe('multiple_center_definitions');
+    });
+  });
+
+  describe('Animation', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: {
+          latitude: 52.53,
+          longitude: 13.42,
+          friendly_name: 'Moving Device',
+          activity: 'Walking',
+        },
+      } as HassEntity;
+    });
+
+    it('should not render a ping animation by default', async () => {
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
+      expect(ping).toBeNull();
+    });
+
+    it('should render a ping animation when enabled and entity is moving', async () => {
+      element.hass = hass;
+      element.setConfig({ ...config, moving_animation_enabled: true });
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
+      expect(ping).not.toBeNull();
+    });
+
+    it('should not render a ping animation when enabled but entity is not moving', async () => {
+      hass.states['device_tracker.test_device'].attributes.activity = 'Stationary';
+      element.hass = hass;
+      element.setConfig({ ...config, moving_animation_enabled: true });
+      await element.updateComplete;
+
+      const ping = element.shadowRoot?.querySelector('.entity-ping');
+      expect(ping).toBeNull();
+    });
+  });
 });

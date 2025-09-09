@@ -73,11 +73,18 @@
 
   &-title {
     align-items: center;
+    border-top: 1px solid var(--divider-color);
     color: var(--primary-text-color);
     display: flex;
     font-weight: bold;
     gap: 4px;
     justify-content: space-between;
+    padding-top: 1em;
+
+    &:first-child {
+      border-top: none;
+      padding-top: 0;
+    }
   }
 }
 
@@ -114,5 +121,19 @@
   &.no-indent {
     margin-top: 0;
     padding-left: 0;
+  }
+}
+
+.duration-with-test-button {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+
+  ha-textfield {
+    flex-grow: 1;
+  }
+  ha-button {
+    flex-shrink: 0;
+    --mdc-button-padding-horizontal: 8px;
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "radar-card",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Plot multiple `device_tracker` entities on a polar chart.",
   "homepage": "https://github.com/timmaurice/lovelace-radar-card#readme",
   "bugs": {

@@ -146,6 +146,18 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       } else {
         delete newConfig.moving_animation_attribute;
       }
+    } else if (configValue === 'center_latitude' || configValue === 'center_longitude') {
+      if (value) {
+        newConfig[configValue] = Number(value);
+      } else {
+        delete newConfig[configValue];
+      }
+    } else if (configValue === 'location_zone_entity') {
+      if (value) {
+        newConfig.location_zone_entity = value as string;
+      } else {
+        delete newConfig.location_zone_entity;
+      }
     } else if (value === '' || value === false || value === undefined || (Array.isArray(value) && value.length === 0)) {
       delete newConfig[configValue];
     } else {
@@ -433,6 +445,10 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       return html`<ha-card>${this._renderEntityEditor()}</ha-card>`;
     }
 
+    const hasCustomZone = !!this._config.location_zone_entity;
+    const hasCustomCoords = this._config.center_latitude != null || this._config.center_longitude != null;
+    const showCenterWarning = hasCustomZone && hasCustomCoords;
+
     return html`
       <ha-card>
         <div class="card-content card-config">
@@ -480,6 +496,14 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                   ></ha-textfield>
                 `}
             <div class="option-sub-group">
+              ${showCenterWarning
+                ? html` <ha-alert
+                    alert-type="warning"
+                    .title=${localize(this.hass, 'component.radar-card.editor.multiple_center_definitions_title')}
+                  >
+                    ${localize(this.hass, 'component.radar-card.editor.multiple_center_definitions_body')}
+                  </ha-alert>`
+                : nothing}
               <div class="label-with-help">
                 <label class="mdc-label"
                   >${localize(this.hass, 'component.radar-card.editor.center_coords_override')}</label
@@ -497,24 +521,14 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                     </div>
                   `
                 : nothing}
-              <div class="side-by-side">
-                <ha-textfield
-                  .label=${localize(this.hass, 'component.radar-card.editor.center_latitude')}
-                  type="number"
-                  .value=${this._config.center_latitude || ''}
-                  .configValue=${'center_latitude'}
-                  @input=${this._valueChanged}
-                  step="any"
-                ></ha-textfield>
-                <ha-textfield
-                  .label=${localize(this.hass, 'component.radar-card.editor.center_longitude')}
-                  type="number"
-                  .value=${this._config.center_longitude || ''}
-                  .configValue=${'center_longitude'}
-                  @input=${this._valueChanged}
-                  step="any"
-                ></ha-textfield>
-              </div>
+              <ha-entity-picker
+                .hass=${this.hass}
+                .value=${this._config.location_zone_entity || ''}
+                .configValue=${'location_zone_entity'}
+                @value-changed=${this._valueChanged}
+                .includeDomains=${['zone']}
+                allow-custom-entity
+              ></ha-entity-picker>
             </div>
           </div>
 
@@ -727,24 +741,26 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
               : nothing}
             ${this._config.moving_animation_enabled === true
               ? html`
-                  <ha-textfield
-                    .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute')}
-                    .value=${this._config.moving_animation_attribute || ''}
-                    .configValue=${'moving_animation_attribute'}
-                    .placeholder=${'activity'}
-                    @input=${this._valueChanged}
-                    .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute_help')}
-                    persistent-helper
-                  ></ha-textfield>
-                  <ha-textfield
-                    .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities')}
-                    .value=${(this._config.moving_animation_activities || []).join(', ')}
-                    .configValue=${'moving_animation_activities'}
-                    .placeholder=${'Automotive, Cycling, Walking, Driving'}
-                    @input=${this._valueChanged}
-                    .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities_help')}
-                    persistent-helper
-                  ></ha-textfield>
+                  <div class="side-by-side">
+                    <ha-textfield
+                      .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute')}
+                      .value=${this._config.moving_animation_attribute || ''}
+                      .configValue=${'moving_animation_attribute'}
+                      .placeholder=${'activity'}
+                      @input=${this._valueChanged}
+                      .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute_help')}
+                      .helperPersistent=${true}
+                    ></ha-textfield>
+                    <ha-textfield
+                      .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities')}
+                      .value=${(this._config.moving_animation_activities || []).join(', ')}
+                      .configValue=${'moving_animation_activities'}
+                      .placeholder=${'Automotive, Cycling, Walking, Driving'}
+                      @input=${this._valueChanged}
+                      .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities_help')}
+                      .helperPersistent=${true}
+                    ></ha-textfield>
+                  </div>
                 `
               : nothing}
           </div>
@@ -755,17 +771,5 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
 
   static styles = css`
     ${unsafeCSS(editorStyles)}
-    .duration-with-test-button {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .duration-with-test-button ha-textfield {
-      flex-grow: 1;
-    }
-    .duration-with-test-button ha-button {
-      flex-shrink: 0;
-      --mdc-button-padding-horizontal: 8px;
-    }
   `;
 }

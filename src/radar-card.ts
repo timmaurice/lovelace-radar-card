@@ -490,11 +490,25 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   private _calculatePoints(): void {
-    const useCustomCenter = this._config.center_latitude != null && this._config.center_longitude != null;
-    const home = {
-      lat: useCustomCenter ? this._config.center_latitude! : this.hass.config.latitude,
-      lon: useCustomCenter ? this._config.center_longitude! : this.hass.config.longitude,
-    };
+    let centerLat: number | undefined = this.hass.config.latitude;
+    let centerLon: number | undefined = this.hass.config.longitude;
+
+    const zoneCoords =
+      this._config.location_zone_entity && typeof this._config.location_zone_entity === 'string'
+        ? this._getCoordsFromState(this._config.location_zone_entity)
+        : null;
+
+    if (zoneCoords) {
+      centerLat = zoneCoords.lat;
+      centerLon = zoneCoords.lon;
+    } else if (this._config.center_latitude != null && this._config.center_longitude != null) {
+      centerLat = this._config.center_latitude;
+      centerLon = this._config.center_longitude;
+    }
+
+    if (centerLat === undefined || centerLon === undefined) return;
+
+    const home = { lat: centerLat, lon: centerLon };
 
     const normalizedEntities = this._config.entities.map((entity) =>
       typeof entity === 'string' ? { entity } : entity,
@@ -542,6 +556,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
         };
       })
       .filter((p): p is RadarPoint => p !== null);
+  }
+
+  private _getCoordsFromState(entityId: string): { lat: number; lon: number } | null {
+    const state = this.hass.states[entityId];
+    if (!state) return null;
+
+    const lat = state.attributes.latitude;
+    const lon = state.attributes.longitude;
+
+    if (typeof lat === 'number' && typeof lon === 'number') {
+      return { lat, lon };
+    }
+
+    console.warn(`Radar-card: Entity '${entityId}' does not have valid latitude and longitude attributes.`);
+    return null;
   }
 
   protected render(): TemplateResult {
@@ -617,10 +646,20 @@ export class RadarCard extends LitElement implements LovelaceCard {
       (changedProperties.has('hass') || changedProperties.has('_config'))
     ) {
       this._error = null;
-      const hasCustomCenter = this._config.center_latitude != null && this._config.center_longitude != null;
+      const hasCustomCoords = this._config.center_latitude != null && this._config.center_longitude != null;
+      const hasCustomZone = !!this._config.location_zone_entity;
+      let hasValidCustomZone = false;
+
+      if (hasCustomZone && typeof this._config.location_zone_entity === 'string') {
+        const zoneCoords = this._getCoordsFromState(this._config.location_zone_entity);
+        if (zoneCoords) {
+          hasValidCustomZone = true;
+        }
+      }
+
       const hasHaHome = this.hass.config?.latitude != null && this.hass.config?.longitude != null;
 
-      if (!hasHaHome && !hasCustomCenter) {
+      if (!hasHaHome && !hasCustomCoords && !hasValidCustomZone) {
         this._error = localize(this.hass, 'component.radar-card.card.no_home_location');
         return;
       }
@@ -630,6 +669,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
         (this._config.center_latitude == null && this._config.center_longitude != null)
       ) {
         this._error = localize(this.hass, 'component.radar-card.card.incomplete_center_coords');
+        return;
+      }
+
+      if (hasCustomZone && hasCustomCoords) {
+        this._error = localize(this.hass, 'component.radar-card.card.multiple_center_definitions');
         return;
       }
 
