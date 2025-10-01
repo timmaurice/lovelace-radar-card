@@ -82,16 +82,33 @@ export interface RadarCardConfig extends LovelaceCardConfig {
   grid_color?: string;
   font_color?: string;
   entity_color?: string;
-  points_clickable?: boolean;
   show_legend?: boolean;
   legend_position?: LegendPosition;
   legend_show_distance?: boolean;
   show_grid_labels?: boolean;
   center_latitude?: number;
   center_longitude?: number;
+  center_entity?: string;
+  location_zone_entity?: string;
+  enable_markers?: boolean;
   animation_enabled?: boolean;
   animation_duration?: number;
   moving_animation_enabled?: boolean;
   moving_animation_activities?: string[];
   moving_animation_attribute?: string;
+}
+
+export interface RadarMarker {
+  id: string;
+  latitude: number;
+  longitude: number;
+  name: string;
+  icon?: string;
+  color?: string;
+  isEditing?: boolean;
+}
+
+export interface HaDialog extends HTMLElement {
+  heading: string;
+  open: boolean;
 }

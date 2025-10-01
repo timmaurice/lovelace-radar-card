@@ -1,6 +1,13 @@
 import { LitElement, TemplateResult, html, css, unsafeCSS, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCardConfig, LovelaceCard, LovelaceCardEditor, RadarCardConfig } from './types.js';
+import {
+  HomeAssistant,
+  LovelaceCardConfig,
+  LovelaceCard,
+  LovelaceCardEditor,
+  RadarCardConfig,
+  RadarMarker,
+} from './types.js';
 import { max as d3Max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { easeCubicOut } from 'd3-ease';
@@ -8,6 +15,11 @@ import { localize } from './localize.js';
 import { select } from 'd3-selection';
 import 'd3-transition';
 import cardStyles from './styles/card.styles.scss';
+import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
+
+if (!window.customElements.get('hex-color-picker')) {
+  window.customElements.define('hex-color-picker', class extends HexBase {});
+}
 import { getAzimuth, getDistance, fireEvent, formatDistance } from './utils.js';
 
 const ELEMENT_NAME = 'radar-card';
@@ -17,11 +29,7 @@ const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
 const RADAR_CHART_MARGIN = 20;
 
-console.info(
-  `%c RADAR-CARD %c v__CARD_VERSION__ `,
-  'color: orange; font-weight: bold; background: black',
-  'color: white; font-weight: bold; background: dimgray',
-);
+const MARKER_STORAGE_KEY = 'radar-card-markers';
 
 declare global {
   interface Window {
@@ -50,7 +58,9 @@ export interface RadarPoint {
   entity_id?: string;
   color?: string;
   isMoving?: boolean;
+  isMarker?: boolean;
 }
+export type { RadarMarker };
 
 type LovelaceCardConstructor = {
   new (): LovelaceCard;
@@ -63,6 +73,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: RadarCardConfig;
   @state() private _points: RadarPoint[] = [];
+  @state() private _markers: RadarMarker[] = [];
   @state() private _tooltip: { visible: boolean; content: TemplateResult | typeof nothing; x: number; y: number } = {
     visible: false,
     content: nothing,
@@ -71,6 +82,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   };
   @state() private _pulsingEntityId: string | null = null;
   @state() private _error: string | null = null;
+  @state() private _editingMarker: RadarMarker | null = null;
   private _hasAnimated = false;
   @state() private _isTestingAnimation = false;
 
@@ -86,10 +98,16 @@ export class RadarCard extends LitElement implements LovelaceCard {
   };
 
   public setConfig(config: RadarCardConfig): void {
-    if (!config || !config.entities || !Array.isArray(config.entities) || config.entities.length === 0) {
-      throw new Error('You need to define at least one entity');
+    if (
+      !config ||
+      !config.entities ||
+      !Array.isArray(config.entities) ||
+      (config.entities.length === 0 && !config.enable_markers)
+    ) {
+      throw new Error('You need to define at least one entity or enable markers');
     }
     this._config = config;
+    this._loadMarkers();
   }
 
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -191,6 +209,113 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   }
 
+  private _loadMarkers(): void {
+    try {
+      const storedMarkers = localStorage.getItem(MARKER_STORAGE_KEY);
+      if (storedMarkers) {
+        this._markers = JSON.parse(storedMarkers);
+      } else {
+        this._markers = [];
+      }
+    } catch (e) {
+      console.error('RadarCard: Failed to load markers from localStorage', e);
+      this._markers = [];
+    }
+  }
+
+  private _saveMarkers(newOrUpdatedMarker?: RadarMarker): void {
+    try {
+      const markers = [...this._markers];
+      if (newOrUpdatedMarker) {
+        const index = markers.findIndex((m) => m.id === newOrUpdatedMarker.id);
+        if (index > -1) {
+          markers[index] = newOrUpdatedMarker;
+        } else {
+          markers.push(newOrUpdatedMarker);
+        }
+        this._markers = markers;
+      }
+      localStorage.setItem(MARKER_STORAGE_KEY, JSON.stringify(this._markers));
+      this._calculatePoints();
+      this.requestUpdate();
+      window.dispatchEvent(new CustomEvent('radar-card-markers-updated'));
+    } catch (e) {
+      console.error('RadarCard: Failed to save markers to localStorage', e);
+    }
+  }
+
+  private _deleteMarker(markerId: string): void {
+    this._markers = this._markers.filter((m) => m.id !== markerId);
+    this._saveMarkers();
+  }
+
+  // Store the bound handler to correctly remove it later
+  private _boundMarkersUpdatedHandler: () => void = () => {
+    // Guard against _config or hass being undefined during event firing
+    if (!this._config || !this.hass) {
+      return;
+    }
+    this._loadMarkers();
+    this._calculatePoints();
+    this.requestUpdate();
+  };
+
+  private _handleMarkerClick(point: RadarPoint): void {
+    if (!point.isMarker || !point.entity_id) return;
+    this._editingMarker = this._markers.find((m) => `marker.${m.id}` === point.entity_id) || null;
+  }
+
+  private _handleMarkerDialogSave(): void {
+    if (this._editingMarker) {
+      this._saveMarkers(this._editingMarker);
+      this._editingMarker = null;
+    }
+  }
+
+  private _handleMarkerDialogInput(ev: Event): void {
+    if (!this._editingMarker) return;
+
+    const target = ev.target as HTMLInputElement | CustomEvent;
+    const configValue = (target as HTMLInputElement).name as keyof RadarMarker;
+
+    let value;
+    if ('detail' in target) {
+      value = target.detail.value;
+    } else {
+      value = (target as HTMLInputElement).value;
+    }
+
+    this._editingMarker = {
+      ...this._editingMarker,
+      [configValue]: value,
+    };
+  }
+
+  private _handleMarkerDialogCancel(): void {
+    this._editingMarker = null;
+  }
+
+  private _handleMarkerDialogDelete(): void {
+    if (this._editingMarker) {
+      this._deleteMarker(this._editingMarker.id);
+      this._editingMarker = null;
+    }
+  }
+
+  private _addMarker(): void {
+    if (!this._config.center_entity) return;
+    const centerCoords = this._getCoordsFromState(this._config.center_entity);
+    if (!centerCoords) return;
+
+    const now = new Date();
+    this._editingMarker = {
+      id: now.toISOString(),
+      latitude: centerCoords.lat,
+      longitude: centerCoords.lon,
+      name: `Marker ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`,
+    };
+  }
+
   private _renderRadarChart(points: RadarPoint[], animate = false) {
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
@@ -210,14 +335,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .join('svg')
       .attr('viewBox', `0 0 ${RADAR_CHART_WIDTH} ${RADAR_CHART_HEIGHT}`)
       .attr('role', 'img')
-      .attr('aria-labelledby', 'radar-title radar-desc');
-
-    svgRoot
-      .selectAll('title')
-      .data([null])
-      .join('title')
-      .attr('id', 'radar-title')
-      .text(this._config.title || 'Radar Chart');
+      .attr('aria-describedby', 'radar-desc');
 
     svgRoot
       .selectAll('desc')
@@ -380,32 +498,40 @@ export class RadarCard extends LitElement implements LovelaceCard {
         (exit) => exit.remove(),
       )
       .style('stroke', (d) => d.color || this._config.entity_color || 'var(--info-color)');
+    entityPings.attr('transform', 'translate(0,0)');
 
     // Plot the entities
-    const entityDots = svg
-      .selectAll<SVGCircleElement, RadarPoint>('circle.entity-dot')
+    const entityGroup = svg
+      .selectAll<SVGGElement, RadarPoint>('g.entity-group')
       .data(points, (d, i) => d.entity_id || d.name || i)
       .join(
         (enter) =>
           enter
-            .append('circle')
+            .append('g')
+            .attr('class', 'entity-group')
+            .call((g) =>
+              g
+                .append((d) => document.createElementNS('http://www.w3.org/2000/svg', d.isMarker ? 'path' : 'circle'))
+                .attr('class', 'entity-dot'),
+            )
             // Add a title element to the circle for accessibility
-            .call((e) => e.append('title')),
+            .call((g) => g.append('title')),
         (update) => update,
         (exit) => exit.remove(),
       );
+    entityGroup.attr('transform', 'translate(0,0)');
 
     // Update title content for all dots (both new and existing)
-    entityDots.select('title').text((d) => this._getPointAccessibleLabel(d, distanceUnit));
+    entityGroup.select('title').text((d) => this._getPointAccessibleLabel(d, distanceUnit));
 
     // Set position and tooltip for all dots (new and updated)
-    entityDots //
-      .attr('r', 3)
-      .attr('tabindex', this._config.points_clickable !== false ? 0 : -1)
-      .attr('class', (d) => `entity-dot ${d.entity_id === this._pulsingEntityId ? 'pulsing' : ''}`)
+    entityGroup //
+      .attr('tabindex', 0)
+      .attr('class', (d) => `entity-group ${d.entity_id === this._pulsingEntityId ? 'pulsing' : ''}`)
       .style('fill', (d) => d.color || this._config.entity_color || 'var(--info-color)')
       .style('fill-opacity', 1)
-      .style('cursor', this._config.points_clickable !== false ? 'pointer' : 'default')
+      .attr('d', (d) => (d.isMarker ? 'M0,-4L4,4H-4Z' : '')) // Use path for markers
+      .style('cursor', 'pointer')
       .on('mouseover', (event, d) => {
         this._showTooltip(event, d, distanceUnit);
       })
@@ -418,9 +544,22 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .on('mouseout', () => this._hideTooltip())
       .on('blur', () => this._hideTooltip());
 
+    // Bring the pulsing dot to the foreground
+    entityGroup.filter('.pulsing').raise();
+
+    const dots = entityGroup.filter((d) => d.isMarker !== true).select('.entity-dot');
+    const markers = entityGroup.filter((d) => d.isMarker === true).select('.entity-dot');
+
+    dots.attr('r', 3);
+    markers.attr('d', 'M0,-4L4,4H-4Z');
+
+    const entityDots = entityGroup.filter((d) => !d.isMarker);
+    const entityMarkers = entityGroup.filter((d) => !!d.isMarker);
+
     if (animate) {
       entityDots
-        .attr('cx', 0)
+        .select('.entity-dot')
+        .attr('cx', 0) // Start at center for animation
         .attr('cy', 0)
         .transition()
         .duration(duration)
@@ -428,31 +567,55 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
 
+      entityMarkers
+        .attr('transform', 'translate(0,0)') // Start at center for animation
+        .transition()
+        .duration(duration)
+        .ease(easeCubicOut)
+        .attr(
+          'transform',
+          (d) =>
+            `translate(${rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180))}, ${rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180))})`,
+        );
+      entityMarkers.select('.entity-dot').attr('transform', (d) => `rotate(${d.azimuth})`);
+
       entityPings
         .attr('cx', 0)
         .attr('cy', 0)
         .transition()
         .duration(duration)
         .ease(easeCubicOut)
+        .attr('transform', () => `translate(0, 0)`)
         .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
     } else {
+      entityDots.select('.entity-dot').attr('transform', null); // Clear transform for dots
       entityDots
-        .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
+        .select('.entity-dot')
+        .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)));
+      entityDots
+        .select('.entity-dot')
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
+
+      entityMarkers.attr(
+        'transform',
+        (d) =>
+          `translate(${rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180))}, ${rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180))})`,
+      );
+      entityMarkers.select('.entity-dot').attr('transform', (d) => `rotate(${d.azimuth})`);
 
       entityPings
         .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
     }
 
-    if (this._config.points_clickable !== false) {
-      entityDots.on('click', (event, d) => {
-        if (d.entity_id) fireEvent(this, 'hass-more-info', { entityId: d.entity_id });
-      });
-    } else {
-      entityDots.on('click', null);
-    }
+    entityGroup.on('click', (event, d) => {
+      if (d.entity_id && !d.isMarker) {
+        fireEvent(this, 'hass-more-info', { entityId: d.entity_id });
+      } else if (d.isMarker) {
+        this._handleMarkerClick(d);
+      }
+    });
   }
 
   private _renderLegend(animate = false): TemplateResult {
@@ -464,8 +627,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
     return html`
       <div class="legend ${position} ${animate ? 'fade-in' : ''}" style=${style}>
-        ${this._points.map((point) => {
-          return html`
+        ${this._points.map(
+          (point) => html`
             <button
               type="button"
               class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
@@ -473,37 +636,105 @@ export class RadarCard extends LitElement implements LovelaceCard {
               aria-label="Toggle pulse for ${point.name}"
               @click=${() => this._handleLegendItemClick(point)}
             >
-              <span
-                class="legend-color"
-                style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
-              ></span>
+              ${point.isMarker
+                ? html`<span
+                    class="legend-marker"
+                    style="border-bottom-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+                  ></span>`
+                : html`<span
+                    class="legend-color"
+                    style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+                  ></span>`}
               <div class="legend-text-container ${!showDistance ? 'no-distance' : ''}">
                 <span class="legend-name">${point.name}</span>${showDistance
                   ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
                   : nothing}
               </div>
             </button>
-          `;
-        })}
+          `,
+        )}
       </div>
     `;
   }
 
+  private _renderMarkerDialog(): TemplateResult {
+    if (!this._editingMarker) {
+      return html``;
+    }
+
+    const name = this._editingMarker.name || '';
+    const color = this._editingMarker.color || '';
+
+    return html`
+      <ha-dialog open @closed=${this._handleMarkerDialogCancel} .heading=${name} class="dialog-actions">
+        <div class="dialog-content">
+          <ha-textfield
+            label=${localize(this.hass, 'component.radar-card.card.dialog.name')}
+            name="name"
+            .value=${name}
+            @input=${this._handleMarkerDialogInput}
+          ></ha-textfield>
+          <div class="color-picker-wrapper">
+            <ha-textfield
+              label=${localize(this.hass, 'component.radar-card.card.dialog.color')}
+              name="color"
+              .value=${color}
+              placeholder="e.g., #ff0000"
+              @input=${this._handleMarkerDialogInput}
+            ></ha-textfield>
+            <hex-color-picker
+              .color=${color || '#000000'}
+              @color-changed=${(e: CustomEvent) => {
+                this._editingMarker = { ...this._editingMarker!, color: e.detail.value };
+                this.requestUpdate('_editingMarker');
+              }}
+            ></hex-color-picker>
+          </div>
+        </div>
+        <mwc-button class="warning" @click=${this._handleMarkerDialogDelete} slot="secondaryAction" unelevated>
+          ${localize(this.hass, 'component.radar-card.card.dialog.delete')}
+        </mwc-button>
+        <mwc-button @click=${this._handleMarkerDialogCancel} slot="secondaryAction" unelevated>
+          ${localize(this.hass, 'component.radar-card.card.dialog.cancel')}
+        </mwc-button>
+        <mwc-button @click=${this._handleMarkerDialogSave} slot="primaryAction" unelevated>
+          ${localize(this.hass, 'component.radar-card.card.dialog.save')}
+        </mwc-button>
+      </ha-dialog>
+    `;
+  }
+
   private _calculatePoints(): void {
-    let centerLat: number | undefined = this.hass.config.latitude;
-    let centerLon: number | undefined = this.hass.config.longitude;
+    // Guard against _config or hass being undefined during initial setup or teardown
+    if (!this._config || !this.hass || !this.hass.config) {
+      return;
+    }
+
+    let centerLat: number | undefined;
+    let centerLon: number | undefined;
+
+    const centerEntityCoords =
+      this._config.center_entity && typeof this._config.center_entity === 'string'
+        ? this._getCoordsFromState(this._config.center_entity)
+        : null;
 
     const zoneCoords =
       this._config.location_zone_entity && typeof this._config.location_zone_entity === 'string'
         ? this._getCoordsFromState(this._config.location_zone_entity)
         : null;
 
-    if (zoneCoords) {
+    if (centerEntityCoords) {
+      centerLat = centerEntityCoords.lat;
+      centerLon = centerEntityCoords.lon;
+    } else if (zoneCoords) {
       centerLat = zoneCoords.lat;
       centerLon = zoneCoords.lon;
     } else if (this._config.center_latitude != null && this._config.center_longitude != null) {
       centerLat = this._config.center_latitude;
       centerLon = this._config.center_longitude;
+    } else {
+      centerLat = this.hass.config.latitude;
+      centerLon = this.hass.config.longitude;
     }
 
     if (centerLat === undefined || centerLon === undefined) return;
@@ -514,7 +745,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       typeof entity === 'string' ? { entity } : entity,
     );
 
-    this._points = normalizedEntities
+    const entityPoints = normalizedEntities
       .map((entityConf): RadarPoint | null => {
         const entityId = entityConf.entity;
         const stateObj = this.hass.states[entityId];
@@ -556,6 +787,29 @@ export class RadarCard extends LitElement implements LovelaceCard {
         };
       })
       .filter((p): p is RadarPoint => p !== null);
+
+    const markerPoints = this._config.enable_markers
+      ? this._markers.map((marker): RadarPoint => {
+          const distance = getDistance(
+            home.lat,
+            home.lon,
+            marker.latitude,
+            marker.longitude,
+            this.hass.config.unit_system.length,
+          );
+          const azimuth = getAzimuth(home.lat, home.lon, marker.latitude, marker.longitude);
+          return {
+            distance,
+            azimuth,
+            name: marker.name,
+            entity_id: `marker.${marker.id}`, // Prefix to avoid conflicts with real entity_ids
+            color: marker.color || 'var(--warning-color)',
+            isMarker: true,
+          };
+        })
+      : [];
+
+    this._points = [...entityPoints, ...markerPoints];
   }
 
   private _getCoordsFromState(entityId: string): { lat: number; lon: number } | null {
@@ -606,6 +860,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const isBesideLegend = ['left', 'right'].includes(legendPosition);
     const isBottomLegend = legendPosition === 'bottom';
 
+    const showAddMarkerButton = this._config.enable_markers && this._config.center_entity;
+    const duration = this._config.animation_duration ?? 750;
+    const style = shouldAnimateLegend ? `animation-duration: ${duration}ms; animation-delay: ${duration * 0.25}ms` : '';
+
     const radarContainer = html`
       <div class="radar-chart-container" @mousemove=${this._moveTooltip}>
         <div class="radar-chart"></div>
@@ -614,6 +872,19 @@ export class RadarCard extends LitElement implements LovelaceCard {
               ${this._tooltip.content}
             </div>`
           : ''}
+        ${showAddMarkerButton
+          ? html`<ha-fab
+              mini
+              class="add-marker-btn ${shouldAnimateLegend ? 'fade-in' : ''}"
+              style=${style}
+              @click=${this._addMarker}
+              title="Add Marker at Current Location"
+              role="button"
+              aria-label="Add Marker at Current Location"
+            >
+              <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
+            </ha-fab>`
+          : nothing}
       </div>
     `;
 
@@ -622,18 +893,22 @@ export class RadarCard extends LitElement implements LovelaceCard {
         <div class="card-content ${isBesideLegend ? `flex-layout legend-${legendPosition}` : ''}">
           ${radarContainer} ${isBesideLegend || isBottomLegend ? legendTemplate : nothing}
         </div>
+        ${this._renderMarkerDialog()}
       </ha-card>
     `;
   }
 
   public connectedCallback(): void {
     super.connectedCallback();
+    this._loadMarkers();
     window.addEventListener('radar-card-test-animation', this._runTestAnimation);
+    window.addEventListener('radar-card-markers-updated', this._boundMarkersUpdatedHandler);
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener('radar-card-test-animation', this._runTestAnimation);
+    window.removeEventListener('radar-card-markers-updated', this._boundMarkersUpdatedHandler);
     this._hasAnimated = false;
   }
 
@@ -645,25 +920,6 @@ export class RadarCard extends LitElement implements LovelaceCard {
       this.hass.config &&
       (changedProperties.has('hass') || changedProperties.has('_config'))
     ) {
-      this._error = null;
-      const hasCustomCoords = this._config.center_latitude != null && this._config.center_longitude != null;
-      const hasCustomZone = !!this._config.location_zone_entity;
-      let hasValidCustomZone = false;
-
-      if (hasCustomZone && typeof this._config.location_zone_entity === 'string') {
-        const zoneCoords = this._getCoordsFromState(this._config.location_zone_entity);
-        if (zoneCoords) {
-          hasValidCustomZone = true;
-        }
-      }
-
-      const hasHaHome = this.hass.config?.latitude != null && this.hass.config?.longitude != null;
-
-      if (!hasHaHome && !hasCustomCoords && !hasValidCustomZone) {
-        this._error = localize(this.hass, 'component.radar-card.card.no_home_location');
-        return;
-      }
-
       if (
         (this._config.center_latitude != null && this._config.center_longitude == null) ||
         (this._config.center_latitude == null && this._config.center_longitude != null)
@@ -672,8 +928,31 @@ export class RadarCard extends LitElement implements LovelaceCard {
         return;
       }
 
-      if (hasCustomZone && hasCustomCoords) {
+      if (this._config.location_zone_entity && (this._config.center_latitude || this._config.center_longitude)) {
         this._error = localize(this.hass, 'component.radar-card.card.multiple_center_definitions');
+        return;
+      }
+
+      this._error = null;
+      let hasValidCenter = false;
+
+      if (this._config.center_entity) {
+        if (this._getCoordsFromState(this._config.center_entity)) {
+          hasValidCenter = true;
+        } else {
+          this._error = `Center entity '${this._config.center_entity}' is invalid or has no location.`;
+          return;
+        }
+      } else if (this._config.location_zone_entity && this._getCoordsFromState(this._config.location_zone_entity)) {
+        hasValidCenter = true;
+      } else if (this._config.center_latitude != null && this._config.center_longitude != null) {
+        hasValidCenter = true;
+      } else if (this.hass.config?.latitude != null && this.hass.config?.longitude != null) {
+        hasValidCenter = true;
+      }
+
+      if (!hasValidCenter) {
+        this._error = localize(this.hass, 'component.radar-card.card.no_home_location');
         return;
       }
 

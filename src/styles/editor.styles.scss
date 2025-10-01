@@ -37,6 +37,10 @@
     flex-grow: 1;
   }
 
+  > ha-icon-button {
+    margin-left: auto;
+  }
+
   .drag-handle {
     color: var(--secondary-text-color);
     cursor: move;
@@ -107,6 +111,11 @@
   justify-content: space-between;
 }
 
+.radio-label {
+  align-items: center;
+  display: inline-flex;
+}
+
 .help-icon {
   color: var(--secondary-text-color);
   cursor: pointer;
@@ -132,8 +141,15 @@
   ha-textfield {
     flex-grow: 1;
   }
+
   ha-button {
-    flex-shrink: 0;
     --mdc-button-padding-horizontal: 8px;
+    flex-shrink: 0;
   }
+}
+
+.button-row {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
 }

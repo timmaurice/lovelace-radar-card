@@ -1,6 +1,6 @@
 import { LitElement, html, css, TemplateResult, unsafeCSS, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCardEditor, RadarCardConfig, RadarCardEntityConfig } from './types';
+import { HomeAssistant, LovelaceCardEditor, RadarCardConfig, RadarCardEntityConfig, RadarMarker } from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { localize } from './localize';
 import { fireEvent } from './utils';
@@ -35,14 +35,21 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   @state() private _editingIndex: number | null = null;
   @state() private _draggedIndex: number | null = null;
   @state() private _showHelpFor: Set<string> = new Set();
+  @state() private _markers: RadarMarker[] = [];
 
   public setConfig(config: RadarCardConfig): void {
     this._config = config;
   }
-
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener('click', this._handleOutsideClick, { capture: true });
+    window.removeEventListener('radar-card-markers-updated', this._loadMarkers);
+  }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    this._loadMarkers();
+    window.addEventListener('radar-card-markers-updated', this._loadMarkers);
   }
 
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
@@ -57,6 +64,20 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     }
   }
 
+  private _handleBooleanToggle(
+    newConfig: RadarCardConfig,
+    configValue: keyof RadarCardConfig,
+    isChecked: boolean,
+    isTrueByDefault: boolean,
+  ): void {
+    if (isChecked) {
+      if (isTrueByDefault) delete newConfig[configValue];
+      else newConfig[configValue] = true;
+    } else {
+      if (isTrueByDefault) newConfig[configValue] = false;
+      else delete newConfig[configValue];
+    }
+  }
   private _valueChanged(ev: Event): void {
     if (!this._config || !this.hass) {
       return;
@@ -76,60 +97,30 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       value = target.tagName === 'HA-SWITCH' ? target.checked : target.value;
     }
 
-    if (configValue === 'auto_radar_max_distance') {
-      if (value) {
-        // is checked, so it's true. true is the new default, so we remove it.
-        delete newConfig.auto_radar_max_distance;
-        delete newConfig.radar_max_distance;
-      } else {
-        newConfig.auto_radar_max_distance = false;
-      }
-    } else if (configValue === 'points_clickable') {
-      if (value) {
-        // is checked, so it's true. true is the default, so we remove it.
-        delete newConfig.points_clickable;
-      } else {
-        newConfig.points_clickable = false;
-        this._showHelpFor.delete('points_clickable');
-        this.requestUpdate('_showHelpFor');
-      }
-    } else if (configValue === 'show_grid_labels') {
-      if (value) {
-        delete newConfig.show_grid_labels;
-      } else {
-        newConfig.show_grid_labels = false;
-      }
-    } else if (configValue === 'animation_enabled') {
-      if (value) {
-        delete newConfig.animation_enabled;
-      } else {
-        newConfig.animation_enabled = false;
-      }
-    } else if (configValue === 'moving_animation_enabled') {
-      if (value) {
-        newConfig.moving_animation_enabled = true;
-      } else {
-        delete newConfig.moving_animation_enabled;
-        delete newConfig.moving_animation_activities;
-        delete newConfig.moving_animation_attribute;
-      }
-    } else if (configValue === 'show_legend') {
-      if (value) {
-        // is checked, so it's true. true is the new default, so we remove it.
-        delete newConfig.show_legend;
-      } else {
-        newConfig.show_legend = false;
+    // Handle boolean toggles
+    const booleanToggles: (keyof RadarCardConfig)[] = [
+      'auto_radar_max_distance',
+      'show_grid_labels',
+      'animation_enabled',
+      'show_legend',
+      'legend_show_distance',
+    ];
+    if (booleanToggles.includes(configValue as keyof RadarCardConfig)) {
+      this._handleBooleanToggle(newConfig, configValue as keyof RadarCardConfig, value as boolean, true);
+      if (configValue === 'auto_radar_max_distance' && value) delete newConfig.radar_max_distance;
+      if (configValue === 'show_legend' && !value) {
         delete newConfig.legend_position;
         delete newConfig.legend_show_distance;
       }
-    } else if (configValue === 'legend_show_distance') {
-      if (value) {
-        // is checked, so it's true. true is the new default, so we remove it.
-        delete newConfig.legend_show_distance;
-      } else {
-        newConfig.legend_show_distance = false;
+    } else if (configValue === 'moving_animation_enabled' || configValue === 'enable_markers') {
+      this._handleBooleanToggle(newConfig, configValue, value as boolean, false);
+      if (configValue === 'moving_animation_enabled' && !value) {
+        delete newConfig.moving_animation_activities;
+        delete newConfig.moving_animation_attribute;
       }
-    } else if (value === 'bottom' && configValue === 'legend_position') {
+    }
+    // Handle specific string/select values
+    else if (value === 'bottom' && configValue === 'legend_position') {
       delete newConfig.legend_position;
     } else if (configValue === 'moving_animation_activities') {
       if (typeof value === 'string' && value.trim()) {
@@ -145,6 +136,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         newConfig.moving_animation_attribute = value;
       } else {
         delete newConfig.moving_animation_attribute;
+      }
+    } else if (configValue === 'center_entity') {
+      if (value) {
+        newConfig.center_entity = value as string;
+      } else {
+        delete newConfig.center_entity;
       }
     } else if (configValue === 'center_latitude' || configValue === 'center_longitude') {
       if (value) {
@@ -167,6 +164,25 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
+  private _handleCenterModeChange(ev: Event): void {
+    // The ha-form-radio component holds the value in the target, not the event detail
+    const target = ev.target as HTMLInputElement;
+    const newMode = target.value;
+    const newConfig: RadarCardConfig = { ...this._config };
+
+    if (newMode === 'static') {
+      // Switching to static mode, clear moving-specific settings
+      delete newConfig.center_entity;
+      newConfig.location_zone_entity = newConfig.location_zone_entity || '';
+    } else {
+      // Switching to moving mode, clear all static settings
+      newConfig.center_entity = newConfig.center_entity || '';
+      delete newConfig.location_zone_entity;
+    }
+
+    fireEvent(this, 'config-changed', { config: newConfig });
+  }
+
   private _handleOutsideClick = (e: MouseEvent): void => {
     if (!this._colorPickerOpenFor) return;
 
@@ -178,6 +194,27 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     // Click was outside, close the picker.
     this._closeColorPicker();
   };
+
+  private _loadMarkers = (): void => {
+    try {
+      const storedMarkers = localStorage.getItem('radar-card-markers');
+      if (storedMarkers) {
+        this._markers = JSON.parse(storedMarkers);
+      } else {
+        this._markers = [];
+      }
+    } catch (e) {
+      console.error('RadarCard Editor: Failed to load markers from localStorage', e);
+      this._markers = [];
+    }
+  };
+
+  private _clearAllMarkers(): void {
+    localStorage.removeItem('radar-card-markers');
+    // Fire an event to notify the card to update
+    window.dispatchEvent(new CustomEvent('radar-card-markers-updated'));
+    this._markers = []; // Update local state
+  }
 
   private _toggleColorPicker(pickerId: string): void {
     this._colorPickerOpenFor = this._colorPickerOpenFor === pickerId ? null : pickerId;
@@ -202,8 +239,9 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     label: string,
     configValue: keyof RadarCardConfig | keyof RadarCardEntityConfig,
     index?: number,
+    isMarker = false,
   ): TemplateResult {
-    const isEntityConfig = index !== undefined;
+    const isEntityConfig = index !== undefined && !isMarker;
     const config = isEntityConfig ? this._getEntities()[index as number] : this._config;
     const value = (config ? config[configValue as keyof typeof config] : '') || '';
 
@@ -230,6 +268,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         entities[index as number] = newEntityConf;
         fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
       } else {
+        // It's a global config
         const newConfig = { ...this._config };
         delete newConfig[configValue as keyof RadarCardConfig];
         fireEvent(this, 'config-changed', { config: newConfig });
@@ -247,7 +286,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
           .value=${value}
           .configValue=${configValue}
           data-index=${index}
-          .placeholder=${'e.g., #ff0000 or var(--primary-color)'}
+          .placeholder=${'e.g., #ff0000'}
           @input=${isEntityConfig ? this._entityAttributeChanged : this._valueChanged}
           @click=${() => this._toggleColorPicker(pickerId)}
         >
@@ -430,6 +469,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             localize(this.hass, 'component.radar-card.editor.color'),
             'color',
             this._editingIndex,
+            false,
           )}
         </div>
       </div>
@@ -445,9 +485,8 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       return html`<ha-card>${this._renderEntityEditor()}</ha-card>`;
     }
 
-    const hasCustomZone = !!this._config.location_zone_entity;
-    const hasCustomCoords = this._config.center_latitude != null || this._config.center_longitude != null;
-    const showCenterWarning = hasCustomZone && hasCustomCoords;
+    // Check for the existence of the key, not just a truthy value (since '' is falsy)
+    const centerMode = 'center_entity' in this._config ? 'moving' : 'static';
 
     return html`
       <ha-card>
@@ -496,14 +535,6 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                   ></ha-textfield>
                 `}
             <div class="option-sub-group">
-              ${showCenterWarning
-                ? html` <ha-alert
-                    alert-type="warning"
-                    .title=${localize(this.hass, 'component.radar-card.editor.multiple_center_definitions_title')}
-                  >
-                    ${localize(this.hass, 'component.radar-card.editor.multiple_center_definitions_body')}
-                  </ha-alert>`
-                : nothing}
               <div class="label-with-help">
                 <label class="mdc-label"
                   >${localize(this.hass, 'component.radar-card.editor.center_coords_override')}</label
@@ -521,14 +552,71 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                     </div>
                   `
                 : nothing}
-              <ha-entity-picker
-                .hass=${this.hass}
-                .value=${this._config.location_zone_entity || ''}
-                .configValue=${'location_zone_entity'}
-                @value-changed=${this._valueChanged}
-                .includeDomains=${['zone']}
-                allow-custom-entity
-              ></ha-entity-picker>
+              <div class="option-row">
+                <ha-form-radio .name=${'centerMode'} .value=${centerMode} @change=${this._handleCenterModeChange}>
+                  <label class="radio-label">
+                    <ha-radio .value=${'static'} .checked=${centerMode === 'static'}></ha-radio>
+                    <span>${localize(this.hass, 'component.radar-card.editor.center_modes.static')}</span>
+                  </label>
+                  <label class="radio-label">
+                    <ha-radio .value=${'moving'} .checked=${centerMode === 'moving'}></ha-radio>
+                    <span>${localize(this.hass, 'component.radar-card.editor.center_modes.moving')}</span>
+                  </label>
+                </ha-form-radio>
+              </div>
+              ${centerMode === 'static'
+                ? html`<ha-entity-picker
+                    .hass=${this.hass}
+                    .value=${this._config.location_zone_entity || ''}
+                    .configValue=${'location_zone_entity'}
+                    @value-changed=${this._valueChanged}
+                    .label=${localize(this.hass, 'component.radar-card.editor.location_zone_entity')}
+                    .includeDomains=${['zone']}
+                    allow-custom-entity
+                  ></ha-entity-picker>`
+                : html`<ha-entity-picker
+                    .label=${localize(this.hass, 'component.radar-card.editor.center_entity')}
+                    .hass=${this.hass}
+                    .value=${this._config.center_entity || ''}
+                    .configValue=${'center_entity'}
+                    @value-changed=${this._valueChanged}
+                    .includeDomains=${['device_tracker', 'person']}
+                    allow-custom-entity
+                  ></ha-entity-picker>`}
+              ${centerMode === 'moving'
+                ? html`
+                    <div class="option-group-title">
+                      <span>${localize(this.hass, 'component.radar-card.editor.markers')}</span>
+                      <ha-icon
+                        class="help-icon"
+                        icon="mdi:help-circle-outline"
+                        @click=${() => this._toggleHelp('markers_help')}
+                      ></ha-icon>
+                    </div>
+                    ${this._showHelpFor.has('markers_help')
+                      ? html`<div class="help-text no-indent">
+                          ${localize(this.hass, 'component.radar-card.editor.markers_help')}
+                        </div>`
+                      : nothing}
+                    <div class="option-row">
+                      <ha-switch
+                        .checked=${this._config.enable_markers === true}
+                        .configValue=${'enable_markers'}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                      <label class="mdc-label"
+                        >${localize(this.hass, 'component.radar-card.editor.enable_markers')}</label
+                      >
+                    </div>
+                    ${this._config.enable_markers
+                      ? html`<div class="button-row">
+                          <ha-button @click=${this._clearAllMarkers} .disabled=${this._markers.length === 0}>
+                            ${localize(this.hass, 'component.radar-card.editor.clear_all_markers')}
+                          </ha-button>
+                        </div>`
+                      : nothing}
+                  `
+                : nothing}
             </div>
           </div>
 
@@ -594,17 +682,20 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 localize(this.hass, 'component.radar-card.editor.grid_color'),
                 'grid_color',
                 undefined,
+                false,
               )}
               ${this._renderColorInput(
                 localize(this.hass, 'component.radar-card.editor.font_color'),
                 'font_color',
                 undefined,
+                false,
               )}
             </div>
             ${this._renderColorInput(
               localize(this.hass, 'component.radar-card.editor.entity_color'),
               'entity_color',
               undefined,
+              false,
             )}
             <div class="option-row">
               <ha-switch
@@ -614,29 +705,6 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
               ></ha-switch>
               <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_grid_labels')}</label>
             </div>
-            <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.interaction')}</div>
-            <div class="option-row">
-              <ha-switch
-                .checked=${this._config.points_clickable !== false}
-                .configValue=${'points_clickable'}
-                @change=${this._valueChanged}
-              ></ha-switch>
-              <div class="label-with-help">
-                <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.points_clickable')}</label>
-                <ha-icon
-                  class="help-icon"
-                  icon="mdi:help-circle-outline"
-                  @click=${() => this._toggleHelp('points_clickable')}
-                ></ha-icon>
-              </div>
-            </div>
-            ${this._config.points_clickable !== false && this._showHelpFor.has('points_clickable')
-              ? html`
-                  <div class="help-text">
-                    ${localize(this.hass, 'component.radar-card.editor.points_clickable_help')}
-                  </div>
-                `
-              : nothing}
             <div class="option-group-title">
               <span>${localize(this.hass, 'component.radar-card.editor.legend')}</span>
               <ha-icon
@@ -772,4 +840,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   static styles = css`
     ${unsafeCSS(editorStyles)}
   `;
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'radar-card-editor': RadarCardEditor;
+  }
+  interface WindowEventMap {
+    'radar-card-markers-updated': CustomEvent;
+  }
 }

@@ -27,10 +27,43 @@
   position: relative;
 }
 
+.legend-left,
+.legend-right {
+  .radar-chart-container {
+    width: 50%;
+  }
+
+  .radar-chart {
+    align-items: center;
+    display: flex;
+  }
+}
+
+ha-fab.add-marker-btn {
+  --mdc-theme-primary: var(--secondary-text-color) !important;
+  --mdc-theme-secondary: var(--secondary-text-color) !important;
+  bottom: 8px;
+  position: absolute;
+  right: 8px;
+  z-index: 1;
+
+  &.fade-in {
+    animation-fill-mode: forwards;
+    animation-name: fadeIn;
+    animation-timing-function: ease-in-out;
+    opacity: 0;
+  }
+}
+
 .radar-chart {
   height: 220px;
   position: relative;
   width: 220px;
+}
+
+.radar-chart svg {
+  display: block;
+  position: relative;
 }
 
 .custom-tooltip {
@@ -69,27 +102,35 @@
 
 @keyframes pulse {
   0% {
-    transform: scale(1);
+    opacity: 0.7;
+    transform: scale(1.2);
   }
 
   50% {
-    transform: scale(2.5);
+    opacity: 1;
+    transform: scale(2.2);
   }
 
   100% {
-    transform: scale(1);
+    opacity: 0.7;
+    transform: scale(1.2);
   }
 }
 
-.entity-dot.pulsing {
+.entity-group.pulsing .entity-dot {
   animation: pulse 1.5s infinite;
-  transform-box: fill-box;
-  transform-origin: center;
 }
 
-.entity-dot:focus-visible {
-  stroke: var(--accent-color);
-  stroke-width: 1.5px;
+.entity-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+
+  &[d] {
+    stroke: var(--ha-card-background, var(--card-background-color, white));
+    stroke-width: 0.5px;
+    transform: rotate(0);
+    transform-origin: center;
+  }
 }
 
 .entity-dot:focus-visible {
@@ -103,6 +144,7 @@
     stroke-opacity: 0.8;
     stroke-width: 3px;
   }
+
   100% {
     r: 30;
     stroke-opacity: 0;
@@ -181,6 +223,15 @@
   width: 12px;
 }
 
+.legend-marker {
+  border-bottom: 10px solid; // Color is set inline
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  flex-shrink: 0;
+  height: 0;
+  width: 0;
+}
+
 .legend-text-container {
   color: var(--secondary-text-color);
   font-size: 12px;
@@ -198,6 +249,7 @@
 .legend-distance {
   font-style: italic;
 }
+
 .entity-ping {
   animation: radar-ping 2s ease-out infinite;
   fill: none;
@@ -208,4 +260,41 @@
 .entity-dot:focus-visible {
   stroke: var(--accent-color);
   stroke-width: 1.5px;
+}
+
+ha-dialog {
+  --mdc-dialog-max-width: 400px;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+ha-dialog.dialog-actions {
+  /* The ha-dialog footer uses a flex container. This will push the primary action to the right. */
+  --justify-action-buttons: space-between;
+  --mdc-dialog-action-button-spacing: 4px; /* Reduce gap between left buttons */
+}
+
+.color-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warning {
+  --mdc-theme-primary: var(--error-color);
+  margin: 0;
+}
+
+ha-dialog mwc-button {
+  --mdc-theme-primary: var(--primary-text-color);
+  --mdc-button-outline-color: transparent;
+  background-color: rgba(var(--rgb-primary-text-color), 0.05);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-block;
+  padding: 5px 10px;
 }

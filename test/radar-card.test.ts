@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../src/radar-card';
-import type { RadarCard, RadarPoint } from '../src/radar-card';
-import { HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
+import type { RadarCard, RadarMarker, RadarPoint } from '../src/radar-card';
+import { HaDialog, HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
 
 // Mock the localize function
@@ -15,6 +15,18 @@ vi.mock('../src/localize', () => ({
     }
     if (key === 'component.radar-card.card.azimuth') {
       return 'Azimuth';
+    }
+    if (key === 'component.radar-card.card.dialog.name') {
+      return 'Name';
+    }
+    if (key === 'component.radar-card.card.dialog.color') {
+      return 'Color';
+    }
+    if (key === 'component.radar-card.card.dialog.cancel') {
+      return 'Cancel';
+    }
+    if (key === 'component.radar-card.card.dialog.delete') {
+      return 'Delete';
     }
     return key.split('.').pop() || key;
   },
@@ -31,6 +43,26 @@ vi.mock('../src/utils', async () => {
 // Mock console.info
 vi.spyOn(console, 'info').mockImplementation(() => {});
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
 // Define a minimal interface for the ha-card element to satisfy TypeScript
 interface HaCard extends HTMLElement {
   header?: string;
@@ -42,6 +74,8 @@ describe('RadarCard', () => {
   let config: RadarCardConfig;
 
   beforeEach(() => {
+    // beforeEach is now fully synchronous
+    vi.useFakeTimers();
     hass = {
       localize: (key: string) => key,
       entities: {},
@@ -69,29 +103,34 @@ describe('RadarCard', () => {
       type: 'custom:radar-card',
       entities: ['device_tracker.test_device'],
     };
-
-    element = document.createElement('radar-card') as RadarCard;
-    document.body.appendChild(element);
   });
-
   afterEach(() => {
-    document.body.removeChild(element);
+    vi.useRealTimers();
     vi.clearAllMocks();
+    localStorageMock.clear();
   });
 
   describe('Initialization and Configuration', () => {
     it('should create the component instance', () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       expect(element).toBeInstanceOf(HTMLElement);
       expect(element.tagName.toLowerCase()).toBe('radar-card');
+      document.body.removeChild(element);
     });
 
     it('should throw an error if no entities are provided', () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       expect(() => element.setConfig({ type: 'custom:radar-card', entities: [] })).toThrow(
-        'You need to define at least one entity',
+        'You need to define at least one entity or enable markers',
       );
+      document.body.removeChild(element);
     });
 
     it('should render a title if provided', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, title: 'My Radar' });
       await element.updateComplete;
@@ -101,9 +140,13 @@ describe('RadarCard', () => {
     });
 
     it('should render "no entities" message when no points are available', async () => {
+      // No entity state in hass, so no points will be calculated
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config);
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const noEntities = element.shadowRoot?.querySelector('.no-entities');
       expect(noEntities).not.toBeNull();
@@ -125,9 +168,12 @@ describe('RadarCard', () => {
     });
 
     it('should render the radar chart when points are available', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config);
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const radarChart = element.shadowRoot?.querySelector('.radar-chart');
       expect(radarChart).not.toBeNull();
@@ -136,35 +182,44 @@ describe('RadarCard', () => {
     });
 
     it('should render the radar chart with a default entity color', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
         ...config,
         entity_color: 'rgb(0, 255, 0)',
       });
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
-      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
-      expect(entityDot).not.toBeNull();
-      expect(entityDot?.style.fill).toBe('rgb(0, 255, 0)');
+      const entityGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      expect(entityGroup).not.toBeNull();
+      expect(entityGroup?.style.fill).toBe('rgb(0, 255, 0)');
     });
 
     it('should render the radar chart with a custom entity color', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
         type: 'custom:radar-card',
         entities: [{ entity: 'device_tracker.test_device', color: 'rgb(255, 0, 0)' }],
       });
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
-      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
-      expect(entityDot).not.toBeNull();
-      expect(entityDot?.style.fill).toBe('rgb(255, 0, 0)');
+      const entityGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      expect(entityGroup).not.toBeNull();
+      expect(entityGroup?.style.fill).toBe('rgb(255, 0, 0)');
     });
 
     it('should fire hass-more-info when a point is clicked by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config); // points_clickable is not set, should default to true
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
       entityDot?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -172,22 +227,14 @@ describe('RadarCard', () => {
       expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.test_device' });
     });
 
-    it('should NOT fire hass-more-info when a point is clicked and points_clickable is false', async () => {
-      element.hass = hass;
-      element.setConfig({ ...config, points_clickable: false });
-      await element.updateComplete;
-
-      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
-      entityDot?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-      expect(fireEvent).not.toHaveBeenCalled();
-    });
-
     it('should show a tooltip on mouseover', async () => {
       hass.states['device_tracker.test_device'].attributes.friendly_name = 'My Test Device';
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config);
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
       entityDot?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
@@ -215,15 +262,20 @@ describe('RadarCard', () => {
     });
 
     it('should render a legend by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config);
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const legend = element.shadowRoot?.querySelector('.legend');
       expect(legend).not.toBeNull();
     });
 
     it('should not render a legend when show_legend is false', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, show_legend: false });
       await element.updateComplete;
@@ -233,6 +285,8 @@ describe('RadarCard', () => {
     });
 
     it('should show distance in legend by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config }); // show_legend and legend_show_distance are default true
       await element.updateComplete;
@@ -242,6 +296,8 @@ describe('RadarCard', () => {
     });
 
     it('should not show distance in legend when legend_show_distance is false', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, legend_show_distance: false });
       await element.updateComplete;
@@ -251,6 +307,8 @@ describe('RadarCard', () => {
     });
 
     it('should position the legend at the bottom by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config }); // show_legend is default true
       await element.updateComplete;
@@ -262,6 +320,8 @@ describe('RadarCard', () => {
     });
 
     it('should position the legend on the right', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, legend_position: 'right' }); // show_legend is default true
       await element.updateComplete;
@@ -274,6 +334,8 @@ describe('RadarCard', () => {
     });
 
     it('should position the legend on the left', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, legend_position: 'left' }); // show_legend is default true
       await element.updateComplete;
@@ -286,6 +348,8 @@ describe('RadarCard', () => {
     });
 
     it('should pulse a dot when its legend item is clicked', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config }); // show_legend is default true
       await element.updateComplete;
@@ -294,14 +358,14 @@ describe('RadarCard', () => {
       legendItem.click();
       await element.updateComplete;
 
-      let dot = element.shadowRoot?.querySelector('circle.entity-dot');
-      expect(dot?.classList.contains('pulsing')).toBe(true);
+      let group = element.shadowRoot?.querySelector('g.entity-group');
+      expect(group?.classList.contains('pulsing')).toBe(true);
 
       legendItem.click(); // toggle off
       await element.updateComplete;
 
-      dot = element.shadowRoot?.querySelector('circle.entity-dot');
-      expect(dot?.classList.contains('pulsing')).toBe(false);
+      group = element.shadowRoot?.querySelector('g.entity-group');
+      expect(group?.classList.contains('pulsing')).toBe(false);
     });
   });
 
@@ -319,15 +383,20 @@ describe('RadarCard', () => {
     });
 
     it('should render grid labels by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config);
       await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const gridLabels = element.shadowRoot?.querySelectorAll('.grid-label');
       expect(gridLabels?.length).toBeGreaterThan(0);
     });
 
     it('should not render grid labels when show_grid_labels is false', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, show_grid_labels: false });
       await element.updateComplete;
@@ -344,6 +413,8 @@ describe('RadarCard', () => {
         state: 'home',
         attributes: { latitude: 52.52, longitude: 13.41, friendly_name: 'Test Device' },
       } as HassEntity;
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, auto_radar_max_distance: false, radar_max_distance: 50 });
       await element.updateComplete;
@@ -367,6 +438,8 @@ describe('RadarCard', () => {
         attributes: { latitude: 52.52, longitude: 13.41, friendly_name: 'Close Device' }, // approx 0.3km
       } as HassEntity;
 
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
         ...config,
@@ -402,6 +475,8 @@ describe('RadarCard', () => {
     });
 
     it('should use custom center coordinates when provided', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, center_latitude: 48.8566, center_longitude: 2.3522 });
       await element.updateComplete;
@@ -411,6 +486,8 @@ describe('RadarCard', () => {
     });
 
     it('should show an error if only one coordinate is provided', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, center_latitude: 48.8566 });
       await element.updateComplete;
@@ -436,6 +513,8 @@ describe('RadarCard', () => {
     });
 
     it('should not render a ping animation by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig(config);
       await element.updateComplete;
@@ -445,6 +524,8 @@ describe('RadarCard', () => {
     });
 
     it('should render a ping animation when enabled and entity is moving', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, moving_animation_enabled: true });
       await element.updateComplete;
@@ -455,6 +536,8 @@ describe('RadarCard', () => {
 
     it('should not render a ping animation when enabled but entity is not moving', async () => {
       hass.states['device_tracker.test_device'].attributes.activity = 'Stationary';
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, moving_animation_enabled: true });
       await element.updateComplete;
@@ -466,6 +549,8 @@ describe('RadarCard', () => {
     it('should respect custom moving_animation_attribute', async () => {
       hass.states['device_tracker.test_device'].attributes.motion_state = 'running';
       delete hass.states['device_tracker.test_device'].attributes.activity;
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
         ...config,
@@ -481,6 +566,8 @@ describe('RadarCard', () => {
 
     it('should match activities case-insensitively', async () => {
       hass.states['device_tracker.test_device'].attributes.activity = 'DRIVING';
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, moving_animation_enabled: true }); // Default activities include 'Driving'
       await element.updateComplete;
@@ -490,6 +577,8 @@ describe('RadarCard', () => {
     });
 
     it('should trigger animation when test event is fired in edit mode', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       const renderSpy = vi.spyOn(
         element as unknown as { _renderRadarChart: (points: RadarPoint[], animate?: boolean) => void },
         '_renderRadarChart',
@@ -531,6 +620,8 @@ describe('RadarCard', () => {
     });
 
     it('should use zone entity for center when provided', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, location_zone_entity: 'zone.work' });
       await element.updateComplete;
@@ -544,6 +635,8 @@ describe('RadarCard', () => {
     });
 
     it('should show an error if both zone and manual coordinates are provided', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({ ...config, location_zone_entity: 'zone.work', center_latitude: 40, center_longitude: 40 });
       await element.updateComplete;
@@ -554,46 +647,187 @@ describe('RadarCard', () => {
     });
   });
 
-  describe('Animation', () => {
+  describe('Markers', () => {
     beforeEach(() => {
-      hass.states['device_tracker.test_device'] = {
-        entity_id: 'device_tracker.test_device',
-        state: 'not_home',
+      hass.states['device_tracker.center_device'] = {
+        entity_id: 'device_tracker.center_device',
+        state: 'home',
         attributes: {
-          latitude: 52.53,
-          longitude: 13.42,
-          friendly_name: 'Moving Device',
-          activity: 'Walking',
+          latitude: 52.52,
+          longitude: 13.41,
+          friendly_name: 'Center Device',
         },
       } as HassEntity;
+      config = {
+        type: 'custom:radar-card',
+        center_entity: 'device_tracker.center_device',
+        animation_enabled: false, // Disable animation to prevent test timeouts with d3
+        entities: [],
+      };
     });
 
-    it('should not render a ping animation by default', async () => {
+    it('should not show the add marker button by default', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      // This config is valid because it has an entity, but enable_markers is false
       element.hass = hass;
-      element.setConfig(config);
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.center_device'],
+      });
       await element.updateComplete;
 
-      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
-      expect(ping).toBeNull();
+      const fab = element.shadowRoot?.querySelector('ha-fab.add-marker-btn');
+      expect(fab).toBeNull();
     });
 
-    it('should render a ping animation when enabled and entity is moving', async () => {
+    it('should show the add marker button when enabled in moving mode', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
-      element.setConfig({ ...config, moving_animation_enabled: true });
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
       await element.updateComplete;
+      await vi.runAllTimersAsync(); // Ensure all async rendering is done
 
-      const ping = element.shadowRoot?.querySelector('circle.entity-ping');
-      expect(ping).not.toBeNull();
+      const fab = element.shadowRoot?.querySelector('ha-fab.add-marker-btn');
+      expect(fab).not.toBeNull();
     });
 
-    it('should not render a ping animation when enabled but entity is not moving', async () => {
-      hass.states['device_tracker.test_device'].attributes.activity = 'Stationary';
+    it('should not show the add marker button when enabled in static mode', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
       element.hass = hass;
-      element.setConfig({ ...config, moving_animation_enabled: true });
+      element.setConfig({
+        type: 'custom:radar-card', // Static mode (no center_entity)
+        entities: [],
+        enable_markers: true,
+      });
       await element.updateComplete;
 
-      const ping = element.shadowRoot?.querySelector('.entity-ping');
-      expect(ping).toBeNull();
+      const fab = element.shadowRoot?.querySelector('ha-fab.add-marker-btn');
+      expect(fab).toBeNull();
+    });
+
+    it('should open a dialog when the add marker button is clicked', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync(); // Ensure all async rendering is done
+
+      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
+      fab?.click();
+      await element.updateComplete;
+
+      const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
+      expect(dialog).not.toBeNull();
+      expect(dialog?.heading).toContain('Marker');
+    });
+
+    it('should add a marker when dialog is saved', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync(); // Ensure all async rendering is done
+
+      // Open and save dialog
+      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
+      fab?.click();
+      await element.updateComplete;
+
+      const saveButton = element.shadowRoot?.querySelector<HTMLElement>('mwc-button[slot="primaryAction"]');
+      saveButton?.click();
+      await element.updateComplete;
+
+      // Check localStorage
+      const storedMarkers = JSON.parse(localStorageMock.getItem('radar-card-markers') || '[]');
+      expect(storedMarkers.length).toBe(1);
+      expect(storedMarkers[0].latitude).toBe(52.52);
+
+      // Check if marker is rendered
+      const markerPath = element.shadowRoot?.querySelector('path.entity-dot');
+      expect(markerPath).not.toBeNull();
+    });
+
+    it('should render a marker with a triangle in the legend', async () => {
+      const marker: RadarMarker = {
+        id: '1',
+        name: 'Test Marker',
+        latitude: 52.53,
+        longitude: 13.42,
+      };
+      localStorageMock.setItem('radar-card-markers', JSON.stringify([marker]));
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, enable_markers: true });
+      await element.updateComplete;
+
+      const legendItem = element.shadowRoot?.querySelector('.legend-item');
+      expect(legendItem).not.toBeNull();
+      const legendMarker = legendItem?.querySelector('.legend-marker');
+      expect(legendMarker).not.toBeNull();
+      const legendDot = legendItem?.querySelector('.legend-color');
+      expect(legendDot).toBeNull();
+    });
+
+    it('should open edit dialog when a marker is clicked', async () => {
+      const marker: RadarMarker = {
+        id: '1',
+        name: 'Editable Marker',
+        latitude: 52.53,
+        longitude: 13.42,
+      };
+      localStorageMock.setItem('radar-card-markers', JSON.stringify([marker]));
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, enable_markers: true });
+      await element.updateComplete;
+
+      const markerGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      markerGroup?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+
+      const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
+      expect(dialog).not.toBeNull();
+      expect(dialog?.heading).toBe('Editable Marker');
+    });
+
+    it('should delete a marker from the edit dialog', async () => {
+      const marker: RadarMarker = {
+        id: '1',
+        name: 'Deletable Marker',
+        latitude: 52.53,
+        longitude: 13.42,
+      };
+      localStorageMock.setItem('radar-card-markers', JSON.stringify([marker]));
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, enable_markers: true });
+      await element.updateComplete;
+
+      // Open dialog
+      const markerGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      markerGroup?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+
+      // Click delete
+      const deleteButton = element.shadowRoot?.querySelector<HTMLElement>('mwc-button.warning');
+      deleteButton?.click();
+      await element.updateComplete;
+
+      const storedMarkers = JSON.parse(localStorageMock.getItem('radar-card-markers') || '[]');
+      expect(storedMarkers.length).toBe(0);
+      const markerPath = element.shadowRoot?.querySelector('path.entity-dot');
+      expect(markerPath).toBeNull();
     });
   });
 });
