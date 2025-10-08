@@ -43,6 +43,7 @@ This card is available in the following languages:
 - English
 - German
 - French
+- Polish
 
 <details>
 <summary>Contributing Translations</summary>
