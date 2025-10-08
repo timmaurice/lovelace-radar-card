@@ -1,0 +1,72 @@
+{
+  "editor": {
+    "data": "Dane",
+    "title": "Tytuł (opcja)",
+    "auto_radar_max_distance": "Automatyczna odlegołość maksymalna",
+    "auto_radar_max_distance_help": "Automatyczne skalowanie maksymalnego zasięgu radaru do najdalszego obiektu. Jeśli jest wyłączone, możesz ustawić stały zasięg.",    "radar_max_distance": "Maksymalny zasięg radaru",
+    "center_coords_override": "Nadpisanie centrum radaru",
+    "center_coords_override_help": "Domyślnie centrum radaru wskazuje lokalizację Twojego Home Assistanta. Użyj tej opcji do wskazania innej lokalizacji radaru. Tryb 'Statycznie' używa encji strefowej. Tryb 'W ruchu' używa encji 'Osoba' lub encji śledzącej położenie jej lokalizacji. znajdjBy default, the radar is centered on your Home Assistant's location. Use this to specify a different center point. 'Static' mode uses a Zone entity. 'Moving' mode uses a Person or Device Tracker entity.",
+    "center_modes": {
+      "static": "Statycznie",
+      "moving": "W ruchu"
+    },
+    "center_entity": "Środek położenia (W ruchu)",
+    "location_zone_entity": "Środek strefy (Statycznie)",
+    "markers": "Markery (Interesujące miejsca)",
+    "enable_markers": "Włacz markery",
+    "markers_help": "Markery mogą być włączone jedynie w trybie 'W ruchu' i są przechowywane w pamięci lokalnej Twojej przeglądarki.",
+    "clear_all_markers": "Wyczyść pamięć markerów",
+    "entities": "Encje",
+    "entity": "Encja",
+    "name": "Nazwa (opcjonalna)",
+    "color": "Kolor (opcjonalny)",
+    "add_entity": "Dodaj encję",
+    "appearance": "Wygląd",
+    "grid_color": "Kolor siatki (opcjonalny)",
+    "font_color": "Color czcionki (opcjonalny)",
+    "entity_color": "Domyślny kolor encji (opcjonalny)",
+    "color_contrast_help": "Sprawdź, czy wszystkie kolory mają wystarczający kontrast na tle karty.",
+    "show_grid_labels": "Pokaż etykiety siatki",
+    "legend": "Legenda",
+    "legend_pulse_help": "Kliknięcie encji w legendzie spowoduje jej pulsowanie na obrazie radaru w celu łatwiejszej lokalizacji.",
+    "show_legend": "Pokaż legendę",
+    "legend_position": "Pozycja legendy",
+    "legend_positions": {
+      "bottom": "Na dole",
+      "right": "Po prawej stronie",
+      "left": "Po lewej stronie"
+    },
+    "legend_show_distance": "Pokaż odległość na legendzie",
+    "animation": "Animatcja",
+    "animation_enabled": "Włącz animację encji",
+    "animation_duration": "Czas trwania animacji (ms)",
+    "test_animation": "Testuj animację",
+    "moving_animation_enabled": "Włącz animację ruchu",
+    "moving_animation_enabled_help": "Włącza animację ping encjom w ruchu (np. marsz, jazda). Wymaga od encji atrybutu 'activity'.",
+    "moving_animation_activities": "Aktywności w ruchu (odzielone przecinkami)",
+    "moving_animation_activities_help": "Lista aktywności uruchamiających animację ruchu. Domyślne aktywności: Automotive, Rower, Marsz, Samochód.",
+    "moving_animation_attribute": "Atrybut ruchu (opcjonalny)",
+    "moving_animation_attribute_help": "Atrybut encji wskazujący wartość aktywności. Domyślny: 'aktywność'."
+  },
+  "card": {
+    "distance": "Odległość",
+    "azimuth": "Azymut",
+    "no_home_location": "Środek lokalizacji nie został ustawiony w Home Assistancie i brak jest współrzędnych użytkownika.",
+    "multiple_center_definitions": "Wskaż encję strefy albo podaj współrzędne środka. Wybierz tylko jedną z tych możliwości.",
+    "incomplete_center_coords": "Podaj współrzędne długości i szerokości geograficznej środka.",
+    "no_entities": "Brak encji do wyświetlenia",
+    "dialog": {
+      "name": "Nazwa",
+      "color": "Kolor",
+      "cancel": "Anuluj",
+      "delete": "Skasuj",
+      "save": "Zapisz"
+    },
+    "directions": {
+      "N": "N",
+      "E": "E",
+      "S": "S",
+      "W": "W"
+    }
+  }
+}
