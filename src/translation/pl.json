@@ -3,7 +3,7 @@
     "data": "Ustawienia",
     "title": "Tytuł (opcjonalnie)",
     "auto_radar_max_distance": "Automatyczny zasięg radaru",
-    "auto_radar_max_distance_help": "Automatyczne ustawienie maksymalnego zasięgu radaru do najdalszego obiektu. Jeśli jest wyłączone, możesz ustawić stały zasięg.",    
+    "auto_radar_max_distance_help": "Automatyczne ustawienie maksymalnego zasięgu radaru do najdalszego obiektu. Jeśli jest wyłączone, możesz ustawić stały zasięg.",
     "radar_max_distance": "Maksymalny zasięg radaru (km)",
     "center_coords_override": "Nadpisanie centrum radaru",
     "center_coords_override_help": "Domyślnie centrum radaru wskazuje lokalizację Twojego Home Assistanta. Użyj tej opcji do wskazania innej lokalizacji radaru. Tryb 'Statycznie' używa encji strefowej. Tryb 'W ruchu' używa encji 'Osoba' lub encji śledzącej położenie jej lokalizacji.",

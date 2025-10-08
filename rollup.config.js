@@ -24,9 +24,9 @@ function logCardInfo() {
     console.groupCollapsed(
       '%c${part1}%c${part2}',
       '${part1Style}',
-      '${part2Style}',
+      '${part2Style}'
     );
-    console.info('${pkg.description}');
+    console.info("${pkg.description}");
     console.info('${repo}');
     console.info('${sponsor}');
     console.groupEnd();
