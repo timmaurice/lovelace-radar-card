@@ -61,7 +61,8 @@
       "color": "Color",
       "cancel": "Cancel",
       "delete": "Delete",
-      "save": "Save"
+      "save": "Save",
+      "add_marker_button": "Add Marker at Center Point (Current Location)"
     },
     "directions": {
       "N": "N",

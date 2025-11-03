@@ -224,7 +224,7 @@ ha-fab.add-marker-btn {
 }
 
 .legend-marker {
-  border-bottom: 10px solid; // Color is set inline
+  border-bottom: 10px solid;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   flex-shrink: 0;
@@ -235,6 +235,26 @@ ha-fab.add-marker-btn {
 .legend-text-container {
   color: var(--secondary-text-color);
   font-size: 12px;
+}
+
+.legend-item-wrapper {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.edit-marker-icon {
+  --mdc-icon-button-size: 16px;
+  --mdc-icon-size: 12px;
+  color: var(--secondary-text-color);
+  height: 16px;
+  padding: 0px;
+  width: 16px;
+
+  ha-icon {
+    font-size: 12px;
+    transform: translate(0, -2px);
+  }
 }
 
 .legend-name {
@@ -275,7 +295,8 @@ ha-dialog {
 ha-dialog.dialog-actions {
   /* The ha-dialog footer uses a flex container. This will push the primary action to the right. */
   --justify-action-buttons: space-between;
-  --mdc-dialog-action-button-spacing: 4px; /* Reduce gap between left buttons */
+  --mdc-dialog-action-button-spacing: 4px;
+  /* Reduce gap between left buttons */
 }
 
 .color-picker-wrapper {

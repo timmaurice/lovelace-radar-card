@@ -629,28 +629,43 @@ export class RadarCard extends LitElement implements LovelaceCard {
       <div class="legend ${position} ${animate ? 'fade-in' : ''}" style=${style}>
         ${this._points.map(
           (point) => html`
-            <button
-              type="button"
-              class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
-              aria-pressed="${point.entity_id === this._pulsingEntityId}"
-              aria-label="Toggle pulse for ${point.name}"
-              @click=${() => this._handleLegendItemClick(point)}
-            >
+            <div class="legend-item-wrapper">
+              <button
+                type="button"
+                class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
+                aria-pressed="${point.entity_id === this._pulsingEntityId}"
+                aria-label="Toggle pulse for ${point.name}"
+                @click=${() => this._handleLegendItemClick(point)}
+              >
+                ${point.isMarker
+                  ? html`<span
+                      class="legend-marker"
+                      style="border-bottom-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+                    ></span>`
+                  : html`<span
+                      class="legend-color"
+                      style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+                    ></span>`}
+                <div class="legend-text-container ${!showDistance ? 'no-distance' : ''}">
+                  <span class="legend-name">${point.name}</span>${showDistance
+                    ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
+                    : nothing}
+                </div>
+              </button>
               ${point.isMarker
-                ? html`<span
-                    class="legend-marker"
-                    style="border-bottom-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
-                  ></span>`
-                : html`<span
-                    class="legend-color"
-                    style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
-                  ></span>`}
-              <div class="legend-text-container ${!showDistance ? 'no-distance' : ''}">
-                <span class="legend-name">${point.name}</span>${showDistance
-                  ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
-                  : nothing}
-              </div>
-            </button>
+                ? html`<ha-icon-button
+                    mini
+                    class="edit-marker-icon"
+                    .label=${'Edit Marker'}
+                    @click=${(e: Event) => {
+                      e.stopPropagation(); // Prevent the legend item click from firing
+                      this._handleMarkerClick(point);
+                    }}
+                  >
+                    <ha-icon icon="mdi:pencil"></ha-icon>
+                  </ha-icon-button>`
+                : nothing}
+            </div>
           `,
         )}
       </div>
@@ -823,7 +838,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       return { lat, lon };
     }
 
-    console.warn(`Radar-card: Entity '${entityId}' does not have valid latitude and longitude attributes.`);
+    this._error = `Radar-card: Entity '${entityId}' does not have valid latitude and longitude attributes.`;
     return null;
   }
 
@@ -878,9 +893,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
               class="add-marker-btn ${shouldAnimateLegend ? 'fade-in' : ''}"
               style=${style}
               @click=${this._addMarker}
-              title="Add Marker at Current Location"
+              title=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
               role="button"
-              aria-label="Add Marker at Current Location"
+              aria-label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
             >
               <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
             </ha-fab>`
@@ -937,14 +952,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
       let hasValidCenter = false;
 
       if (this._config.center_entity) {
-        if (this._getCoordsFromState(this._config.center_entity)) {
+        const coords = this._getCoordsFromState(this._config.center_entity);
+        if (coords) {
           hasValidCenter = true;
         } else {
-          this._error = `Center entity '${this._config.center_entity}' is invalid or has no location.`;
+          // _getCoordsFromState already set this._error
           return;
         }
-      } else if (this._config.location_zone_entity && this._getCoordsFromState(this._config.location_zone_entity)) {
-        hasValidCenter = true;
+      } else if (this._config.location_zone_entity) {
+        const coords = this._getCoordsFromState(this._config.location_zone_entity);
+        if (coords) {
+          hasValidCenter = true;
+        } else {
+          // _getCoordsFromState already set this._error
+          return;
+        }
       } else if (this._config.center_latitude != null && this._config.center_longitude != null) {
         hasValidCenter = true;
       } else if (this.hass.config?.latitude != null && this.hass.config?.longitude != null) {

@@ -61,7 +61,8 @@
       "color": "Kolor",
       "cancel": "Anuluj",
       "delete": "Skasuj",
-      "save": "Zapisz"
+      "save": "Zapisz",
+      "add_marker_button": "Dodaj marker w punkcie centralnym (bieżąca lokalizacja)"
     },
     "directions": {
       "N": "N",

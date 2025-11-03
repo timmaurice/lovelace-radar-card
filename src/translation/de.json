@@ -58,7 +58,8 @@
       "color": "Farbe",
       "cancel": "Abbrechen",
       "delete": "Löschen",
-      "save": "Speichern"
+      "save": "Speichern",
+      "add_marker_button": "Markierung am Mittelpunkt (aktuellen Standort) hinzufügen"
     },
     "directions": {
       "N": "N",

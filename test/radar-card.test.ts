@@ -446,7 +446,7 @@ describe('RadarCard', () => {
         entities: ['device_tracker.test_device_far', 'device_tracker.test_device_close'],
         animation_enabled: false,
       });
-      await element.updateComplete;
+      await vi.runAllTimersAsync();
 
       const entityDots = element.shadowRoot?.querySelectorAll<SVGCircleElement>('circle.entity-dot');
       const radii = Array.from(entityDots!).map((dot) => {

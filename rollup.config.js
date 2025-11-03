@@ -11,12 +11,12 @@ import pkg from './package.json' with { type: 'json' };
 const dev = process.env.ROLLUP_WATCH === 'true';
 
 function logCardInfo() {
-  const part1 = 'RADAR-CARD';
+  const part1 = `📡 ${pkg.name.toUpperCase().replace(/-/g, ' ')}`;
   const part2 = `v${pkg.version}`;
   const part1Style =
     'color: orange; font-weight: bold; background: black; padding: 2px 4px; border-radius: 2px 0 0 2px;';
   const part2Style =
-    'color: white; font-weight: bold; background: dimgray; padding: 2px 4px; border-radius: 0 2px 2px 0;'; // Sponsor link updated
+    'color: white; font-weight: bold; background: dimgray; padding: 2px 4px; border-radius: 0 2px 2px 0;';
   const repo = `Github:  ${pkg.repository.url}`;
   const sponsor = 'Sponsor: https://buymeacoffee.com/timmaurice';
 
