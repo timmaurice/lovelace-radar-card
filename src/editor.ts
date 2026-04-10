@@ -112,7 +112,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         delete newConfig.legend_position;
         delete newConfig.legend_show_distance;
       }
-    } else if (configValue === 'moving_animation_enabled' || configValue === 'enable_markers') {
+    } else if (
+      configValue === 'moving_animation_enabled' ||
+      configValue === 'enable_markers' ||
+      configValue === 'hide_at_home' ||
+      configValue === 'show_zones' ||
+      configValue === 'show_avatars'
+    ) {
       this._handleBooleanToggle(newConfig, configValue, value as boolean, false);
       if (configValue === 'moving_animation_enabled' && !value) {
         delete newConfig.moving_animation_activities;
@@ -472,6 +478,17 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             false,
           )}
         </div>
+        <div class="option-group">
+          <div class="option-group-title">Tap Action</div>
+          <ha-selector
+            .hass=${this.hass}
+            .selector=${{ ui_action: { default_action: 'more-info' } }}
+            .value=${entityConf.tap_action}
+            .configValue=${'tap_action'}
+            data-index=${this._editingIndex}
+            @value-changed=${this._entityAttributeChanged}
+          ></ha-selector>
+        </div>
       </div>
     `;
   }
@@ -534,6 +551,14 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                     @input=${this._valueChanged}
                   ></ha-textfield>
                 `}
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.hide_at_home === true}
+                .configValue=${'hide_at_home'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.hide_at_home')}</label>
+            </div>
             <div class="option-sub-group">
               <div class="label-with-help">
                 <label class="mdc-label"
@@ -704,6 +729,22 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 @change=${this._valueChanged}
               ></ha-switch>
               <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_grid_labels')}</label>
+            </div>
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.show_avatars === true}
+                .configValue=${'show_avatars'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_avatars')}</label>
+            </div>
+            <div class="option-row">
+              <ha-switch
+                .checked=${this._config.show_zones === true}
+                .configValue=${'show_zones'}
+                @change=${this._valueChanged}
+              ></ha-switch>
+              <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_zones')}</label>
             </div>
             <div class="option-group-title">
               <span>${localize(this.hass, 'component.radar-card.editor.legend')}</span>

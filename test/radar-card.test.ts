@@ -3,6 +3,7 @@ import '../src/radar-card';
 import type { RadarCard, RadarMarker, RadarPoint } from '../src/radar-card';
 import { HaDialog, HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
+import { handleAction } from 'custom-card-helpers';
 
 // Mock the localize function
 vi.mock('../src/localize', () => ({
@@ -42,6 +43,11 @@ vi.mock('../src/utils', async () => {
 });
 // Mock console.info
 vi.spyOn(console, 'info').mockImplementation(() => {});
+
+// Mock custom-card-helpers
+vi.mock('custom-card-helpers', () => ({
+  handleAction: vi.fn(),
+}));
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -102,11 +108,12 @@ describe('RadarCard', () => {
     config = {
       type: 'custom:radar-card',
       entities: ['device_tracker.test_device'],
+      animation_enabled: false,
     };
   });
   afterEach(() => {
     vi.useRealTimers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     localStorageMock.clear();
   });
 
@@ -202,7 +209,7 @@ describe('RadarCard', () => {
       document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
-        type: 'custom:radar-card',
+        ...config,
         entities: [{ entity: 'device_tracker.test_device', color: 'rgb(255, 0, 0)' }],
       });
       await element.updateComplete;
@@ -245,6 +252,47 @@ describe('RadarCard', () => {
       expect(tooltip?.innerHTML).toContain('My Test Device');
       expect(tooltip?.innerHTML).toContain('Distance');
       expect(tooltip?.innerHTML).toContain('Azimuth');
+    });
+
+    it('should hide entities natively when hide_at_home is true and string literal tracker registers at home', async () => {
+      hass.states['device_tracker.home_device'] = {
+        entity_id: 'device_tracker.home_device',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.home_device'], hide_at_home: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityDot = element.shadowRoot?.querySelector('circle.entity-dot');
+      expect(entityDot).toBeNull();
+    });
+
+    it('should execute custom tap_action routing exclusively when explicitly mapped via config dictionary', async () => {
+      const customAction = { action: 'navigate' as const, navigation_path: '/lovelace' };
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: [{ entity: 'device_tracker.test_device', tap_action: customAction }],
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
+      entityDot?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(handleAction).toHaveBeenCalledWith(
+        element,
+        expect.anything(),
+        { tap_action: customAction, entity: 'device_tracker.test_device' },
+        'tap',
+      );
     });
   });
 
@@ -367,6 +415,34 @@ describe('RadarCard', () => {
       group = element.shadowRoot?.querySelector('g.entity-group');
       expect(group?.classList.contains('pulsing')).toBe(false);
     });
+
+    it('should render an avatar in the legend when show_avatars is true and an entity_picture exists', async () => {
+      hass.states['device_tracker.test_device'].attributes.entity_picture = 'https://example.com/avatar.png';
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, show_avatars: true });
+      await element.updateComplete;
+
+      const legendAvatar = element.shadowRoot?.querySelector('.legend-avatar');
+      expect(legendAvatar).not.toBeNull();
+      const legendColor = element.shadowRoot?.querySelector('.legend-color');
+      expect(legendColor).toBeNull();
+    });
+
+    it('should fallback to colored dot in the legend if show_avatars is disabled despite possessing an entity_picture', async () => {
+      hass.states['device_tracker.test_device'].attributes.entity_picture = 'https://example.com/avatar.png';
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, show_avatars: false });
+      await element.updateComplete;
+
+      const legendAvatar = element.shadowRoot?.querySelector('.legend-avatar');
+      expect(legendAvatar).toBeNull();
+      const legendColor = element.shadowRoot?.querySelector('.legend-color');
+      expect(legendColor).not.toBeNull();
+    });
   });
 
   describe('Grid Labels Configuration', () => {
@@ -448,11 +524,16 @@ describe('RadarCard', () => {
       });
       await vi.runAllTimersAsync();
 
-      const entityDots = element.shadowRoot?.querySelectorAll<SVGCircleElement>('circle.entity-dot');
-      const radii = Array.from(entityDots!).map((dot) => {
-        const cx = parseFloat(dot.getAttribute('cx')!);
-        const cy = parseFloat(dot.getAttribute('cy')!);
-        return Math.sqrt(cx * cx + cy * cy);
+      const entityGroups = element.shadowRoot?.querySelectorAll<SVGGElement>('g.entity-group');
+      const radii = Array.from(entityGroups!).map((group) => {
+        const transform = group.getAttribute('transform');
+        const match = transform?.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (match) {
+          const cx = parseFloat(match[1]);
+          const cy = parseFloat(match[2]);
+          return Math.sqrt(cx * cx + cy * cy);
+        }
+        return 0;
       });
 
       // Far dot should be at the edge (radius 90), close dot should be near the center.
@@ -579,20 +660,21 @@ describe('RadarCard', () => {
     it('should trigger animation when test event is fired in edit mode', async () => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);
-      const renderSpy = vi.spyOn(
-        element as unknown as { _renderRadarChart: (points: RadarPoint[], animate?: boolean) => void },
-        '_renderRadarChart',
-      );
+      const renderSpy = vi
+        .spyOn(
+          element as unknown as { _renderRadarChart: (points: RadarPoint[], animate?: boolean) => void },
+          '_renderRadarChart',
+        )
+        .mockImplementation(() => {});
+
       element.hass = hass;
-      element.setConfig(config);
+      element.setConfig({ ...config, animation_enabled: true });
       element.editMode = true;
       await element.updateComplete;
 
-      renderSpy.mockClear(); // Clear calls from initial render
+      renderSpy.mockClear();
 
       window.dispatchEvent(new CustomEvent('radar-card-test-animation'));
-      await element.updateComplete;
-
       expect(renderSpy).toHaveBeenCalledWith(expect.anything(), true);
     });
   });
@@ -698,9 +780,11 @@ describe('RadarCard', () => {
       document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
+        ...config,
         type: 'custom:radar-card', // Static mode (no center_entity)
         entities: [],
         enable_markers: true,
+        animation_enabled: false,
       });
       await element.updateComplete;
 
@@ -828,6 +912,119 @@ describe('RadarCard', () => {
       expect(storedMarkers.length).toBe(0);
       const markerPath = element.shadowRoot?.querySelector('path.entity-dot');
       expect(markerPath).toBeNull();
+    });
+  });
+
+  describe('Entity Avatars Configuration', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.avatar_device'] = {
+        entity_id: 'device_tracker.avatar_device',
+        state: 'home',
+        attributes: {
+          latitude: 52.52,
+          longitude: 13.41,
+          friendly_name: 'Avatar Device',
+          entity_picture: 'https://example.com/profile.jpg',
+        },
+      } as HassEntity;
+    });
+
+    it('should build avatar image node when show_avatars is set', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.avatar_device'], show_avatars: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const avatarBlock = element.shadowRoot?.querySelector('.entity-avatar');
+      expect(avatarBlock).not.toBeNull();
+      const img = avatarBlock?.querySelector('img');
+      expect(img?.getAttribute('src')).toBe('https://example.com/profile.jpg');
+    });
+
+    it('should not display the native target dot when a valid avatar is active', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.avatar_device'], show_avatars: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
+      expect(entityDot?.style.display).toBe('none');
+    });
+
+    it('should display the fallback map dot when an avatar is not physically available', async () => {
+      delete hass.states['device_tracker.avatar_device'].attributes.entity_picture;
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.avatar_device'], show_avatars: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
+      expect(entityDot?.style.display).toBe('block');
+    });
+  });
+
+  describe('Zone Entity Overlay Configuration', () => {
+    beforeEach(() => {
+      // Mocking zone object
+      hass.states['zone.park'] = {
+        entity_id: 'zone.park',
+        state: 'zoning',
+        attributes: {
+          latitude: 52.53,
+          longitude: 13.43,
+          friendly_name: 'Park Zone',
+          radius: 400,
+        },
+      } as HassEntity;
+    });
+
+    it('should parse and map standard boundary zones when explicitly requested', async () => {
+      // Inject device_tracker mock to prevent early return block
+      hass.states['device_tracker.tester'] = {
+        entity_id: 'device_tracker.tester',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      // Expanding boundary bounds massively to guarantee the mock park zone natively penetrates constraints
+      element.setConfig({ ...config, entities: ['device_tracker.tester'], show_zones: true, radar_max_distance: 1000 });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const zoneOverlays = element.shadowRoot?.querySelectorAll('circle.zone-circle');
+      expect(zoneOverlays?.length).toBe(1);
+
+      // Asserts scale maps radius dynamically
+      const radius = parseFloat(zoneOverlays?.[0].getAttribute('r') || '0');
+      expect(radius).toBeGreaterThan(0);
+    });
+
+    it('should ignore home assistant zones natively when explicitly deactivated', async () => {
+      // Inject device_tracker mock to prevent early return block
+      hass.states['device_tracker.tester'] = {
+        entity_id: 'device_tracker.tester',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.tester'], show_zones: false });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const zoneOverlays = element.shadowRoot?.querySelectorAll<SVGCircleElement>('circle.zone-circle');
+      expect(zoneOverlays?.length).toBe(0);
     });
   });
 });

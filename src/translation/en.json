@@ -5,6 +5,7 @@
     "auto_radar_max_distance": "Auto Max Distance",
     "auto_radar_max_distance_help": "Automatically adjusts the radar's maximum distance to fit the furthest entity. If disabled, you can set a fixed distance.",
     "radar_max_distance": "Radar Max Distance",
+    "hide_at_home": "Hide entities at home",
     "center_coords_override": "Center Point Override",
     "center_coords_override_help": "By default, the radar is centered on your Home Assistant's location. Use this to specify a different center point. 'Static' mode uses a Zone entity. 'Moving' mode uses a Person or Device Tracker entity.",
     "center_modes": {
@@ -28,6 +29,8 @@
     "entity_color": "Default Entity Color (Optional)",
     "color_contrast_help": "For accessibility, ensure all colors have sufficient contrast against the card background.",
     "show_grid_labels": "Show Grid Distance Labels",
+    "show_avatars": "Show Entity Avatars",
+    "show_zones": "Show Zone Overlays",
     "legend": "Legend",
     "legend_pulse_help": "Clicking an entity in the legend will make its dot on the radar pulse, making it easier to locate.",
     "show_legend": "Show Legend",

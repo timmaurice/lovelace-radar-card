@@ -35,6 +35,7 @@ function logCardInfo() {
 
 export default {
   input: 'src/radar-card.ts',
+  context: 'window',
   output: {
     file: pkg.main,
     format: 'es',

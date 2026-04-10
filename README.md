@@ -13,6 +13,7 @@
 
 - Plot multiple `device_tracker` entities on a polar chart.
 - Set a custom center point by selecting a `device_tracker`, `person`, or `zone` entity. Uses your Home Assistant location by default.
+- **Zone Overlays**: Visualize your built-in Home Assistant zones directly on the radar scale as visually transparent boundaries natively mapped against your entities.
 
 ### Dynamic Radar Display
 
@@ -24,19 +25,21 @@
 ### Rich Interactivity
 
 - Hover over points to see a detailed tooltip with distance and azimuth.
-- Click entity points to open their more-info dialog.
-- Display an optional legend to identify entities by color.
-- Click legend items to make the corresponding dot on the radar pulse.
+- **Interactive Actions**: Assign custom `tap_action` parameters down to the entity level to instantly trigger navigation, service invocations, or simple more-info dialogues when physically clicked.
+- **Entity Avatars**: Override generic tracking dots natively with scalable, real-time user profile pictures extracted instantly from Home Assistant.
+- Display an optional legend to identify entities by color or avatar.
+- Click legend items to gracefully pulse the targeted entity on the map directly.
 
 ### Deep Customization
 
 - Customize colors for the grid, fonts, and a default for all entities.
 - Override name and color on a per-entity basis.
 - Configure legend position (`bottom`, `left`, `right`) and optionally show distances within it.
+- **Conditional Tracking**: Activate `hide_at_home` to cleanly declutter the interface by dropping static trackers automatically off the array the moment they arrive back to the Home position.
 
 ![Radar Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-radar-card/main/screenshot.png)
 
-## Languages
+## Localization
 
 This card is available in the following languages:
 
@@ -103,6 +106,9 @@ For those who prefer YAML, the options are documented below.
 | `font_color`                  | string  | `var(--primary-text-color)`                       | Color for the cardinal point labels (N, E, S, W).                                                                                                         |
 | `entity_color`                | string  | `var(--info-color)`                               | Default color for the entity points on the radar.                                                                                                         |
 | `show_grid_labels`            | boolean | `true`                                            | If `true`, shows distance labels on the grid circles.                                                                                                     |
+| `show_avatars`                | boolean | `false`                                           | If `true` and the entity has an `entity_picture` attribute, it replaces the basic dot with the entity's picture scaled in a dynamic portrait ring.        |
+| `show_zones`                  | boolean | `false`                                           | If `true`, draws faint translucent overlays on the radar representing your defined Home Assistant zones.                                                  |
+| `hide_at_home`                | boolean | `false`                                           | If `true`, hides entities that are currently reported as being 'home'.                                                                                    |
 | `show_legend`                 | boolean | `true`                                            | Show a legend with entity colors and names below the radar.                                                                                               |
 | `legend_position`             | string  | `bottom`                                          | Position of the legend. Can be `bottom`, `right`, or `left`.                                                                                              |
 | `legend_show_distance`        | boolean | `true`                                            | If `true`, shows the entity's distance in the legend.                                                                                                     |
@@ -119,11 +125,12 @@ For those who prefer YAML, the options are documented below.
 
 Each entry in the `entities` list can be a simple string or an object with more options.
 
-| Name     | Type   | Default                | Description                                           |
-| -------- | ------ | ---------------------- | ----------------------------------------------------- |
-| `entity` | string | **Required**           | The ID of the `device_tracker` entity.                |
-| `name`   | string | (entity friendly name) | An override for the entity name shown in the tooltip. |
-| `color`  | string | (from `entity_color`)  | An override for the entity point color.               |
+| Name         | Type   | Default                | Description                                                  |
+| ------------ | ------ | ---------------------- | ------------------------------------------------------------ |
+| `entity`     | string | **Required**           | The ID of the `device_tracker` entity.                       |
+| `name`       | string | (entity friendly name) | An override for the entity name shown in the tooltip.        |
+| `color`      | string | (from `entity_color`)  | An override for the entity point color.                      |
+| `tap_action` | object | (from `tap_action`)    | Overrides the default `tap_action` for this specific entity. |
 
 ### Examples
 

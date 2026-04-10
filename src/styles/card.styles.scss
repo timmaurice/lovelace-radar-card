@@ -59,12 +59,12 @@ ha-fab.add-marker-btn {
   height: 220px;
   position: relative;
   width: 220px;
-}
 
-.radar-chart svg {
-  display: block;
-  position: relative;
-  width: 100%;
+  svg {
+    display: block;
+    position: relative;
+    width: 100%;
+  }
 }
 
 .custom-tooltip {
@@ -118,11 +118,37 @@ ha-fab.add-marker-btn {
   }
 }
 
-.entity-group.pulsing .entity-dot {
-  animation: pulse 1.5s infinite;
+@keyframes pulse-avatar {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.25);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.entity-dot {
+.entity-group {
+  &.pulsing {
+    .entity-dot {
+      animation: pulse 1.5s infinite;
+    }
+
+    .entity-avatar {
+      animation: pulse-avatar 1.5s infinite;
+    }
+  }
+}
+
+.entity-dot,
+.entity-avatar {
   transform-box: fill-box;
   transform-origin: center;
 
@@ -132,11 +158,11 @@ ha-fab.add-marker-btn {
     transform: rotate(0);
     transform-origin: center;
   }
-}
 
-.entity-dot:focus-visible {
-  stroke: var(--accent-color);
-  stroke-width: 1.5px;
+  &:focus-visible {
+    stroke: var(--accent-color);
+    stroke-width: 1.5px;
+  }
 }
 
 @keyframes radar-ping {
@@ -180,95 +206,104 @@ ha-fab.add-marker-btn {
     animation-timing-function: ease-in-out;
     opacity: 0;
   }
+
+  .legend-item-wrapper {
+    align-items: center;
+    display: flex;
+    gap: 4px;
+
+    .edit-marker-icon {
+      --mdc-icon-button-size: 16px;
+      --mdc-icon-size: 12px;
+      color: var(--secondary-text-color);
+      height: 16px;
+      padding: 0px;
+      width: 16px;
+
+      ha-icon {
+        font-size: 12px;
+        transform: translate(0, -2px);
+      }
+    }
+  }
+
+  .legend-item {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    font-family: inherit;
+    font-size: inherit;
+    gap: 8px;
+    padding: 2px 4px;
+    text-align: inherit;
+    transition: background-color 0.3s ease;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 2px;
+    }
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--secondary-text-color) 10%, transparent);
+    }
+
+    &.active {
+      background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
+    }
+
+    .legend-color {
+      border-radius: 50%;
+      flex-shrink: 0;
+      height: 14px;
+      width: 14px;
+    }
+
+    .legend-avatar {
+      border-radius: 50%;
+      flex-shrink: 0;
+      height: 14px;
+      width: 14px;
+      object-fit: cover;
+      box-sizing: border-box;
+    }
+
+    .legend-marker {
+      border-bottom: 10px solid;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      flex-shrink: 0;
+      height: 0;
+      width: 0;
+    }
+
+    .legend-text-container {
+      color: var(--secondary-text-color);
+      font-size: 12px;
+
+      .legend-name {
+        display: inline-block;
+        max-width: 130px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+
+      .legend-distance {
+        font-style: italic;
+      }
+    }
+  }
 }
 
 @keyframes fadeIn {
   to {
     opacity: 1;
   }
-}
-
-.legend-item {
-  align-items: center;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: inherit;
-  cursor: pointer;
-  display: flex;
-  font-family: inherit;
-  font-size: inherit;
-  gap: 8px;
-  padding: 2px 4px;
-  text-align: inherit;
-  transition: background-color 0.3s ease;
-
-  &:focus-visible {
-    outline: 2px solid var(--accent-color);
-    outline-offset: 2px;
-  }
-
-  &:hover {
-    background-color: color-mix(in srgb, var(--secondary-text-color) 10%, transparent);
-  }
-
-  &.active {
-    background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
-  }
-}
-
-.legend-color {
-  border-radius: 50%;
-  flex-shrink: 0;
-  height: 12px;
-  width: 12px;
-}
-
-.legend-marker {
-  border-bottom: 10px solid;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  flex-shrink: 0;
-  height: 0;
-  width: 0;
-}
-
-.legend-text-container {
-  color: var(--secondary-text-color);
-  font-size: 12px;
-}
-
-.legend-item-wrapper {
-  align-items: center;
-  display: flex;
-  gap: 4px;
-}
-
-.edit-marker-icon {
-  --mdc-icon-button-size: 16px;
-  --mdc-icon-size: 12px;
-  color: var(--secondary-text-color);
-  height: 16px;
-  padding: 0px;
-  width: 16px;
-
-  ha-icon {
-    font-size: 12px;
-    transform: translate(0, -2px);
-  }
-}
-
-.legend-name {
-  display: inline-block;
-  max-width: 130px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.legend-distance {
-  font-style: italic;
 }
 
 .entity-ping {
@@ -278,26 +313,31 @@ ha-fab.add-marker-btn {
   transform-origin: center;
 }
 
-.entity-dot:focus-visible {
-  stroke: var(--accent-color);
-  stroke-width: 1.5px;
-}
-
 ha-dialog {
   --mdc-dialog-max-width: 400px;
+
+  &.dialog-actions {
+    /* The ha-dialog footer uses a flex container. This will push the primary action to the right. */
+    --justify-action-buttons: space-between;
+    --mdc-dialog-action-button-spacing: 4px;
+    /* Reduce gap between left buttons */
+  }
+
+  mwc-button {
+    --mdc-theme-primary: var(--primary-text-color);
+    --mdc-button-outline-color: transparent;
+    background-color: rgba(var(--rgb-primary-text-color), 0.05);
+    border-radius: 5px;
+    cursor: pointer;
+    display: inline-block;
+    padding: 5px 10px;
+  }
 }
 
 .dialog-content {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-ha-dialog.dialog-actions {
-  /* The ha-dialog footer uses a flex container. This will push the primary action to the right. */
-  --justify-action-buttons: space-between;
-  --mdc-dialog-action-button-spacing: 4px;
-  /* Reduce gap between left buttons */
 }
 
 .color-picker-wrapper {
@@ -309,14 +349,4 @@ ha-dialog.dialog-actions {
 .warning {
   --mdc-theme-primary: var(--error-color);
   margin: 0;
-}
-
-ha-dialog mwc-button {
-  --mdc-theme-primary: var(--primary-text-color);
-  --mdc-button-outline-color: transparent;
-  background-color: rgba(var(--rgb-primary-text-color), 0.05);
-  border-radius: 5px;
-  cursor: pointer;
-  display: inline-block;
-  padding: 5px 10px;
 }

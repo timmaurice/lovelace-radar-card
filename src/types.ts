@@ -1,3 +1,5 @@
+import { ActionConfig } from 'custom-card-helpers';
+
 export interface FrontendLocaleData {
   language: string;
   number_format: 'comma_decimal' | 'decimal_comma' | 'space_comma' | 'system';
@@ -70,6 +72,7 @@ export interface RadarCardEntityConfig {
   entity: string;
   name?: string;
   color?: string;
+  tap_action?: ActionConfig;
 }
 
 export type LegendPosition = 'bottom' | 'right' | 'left';
@@ -86,6 +89,9 @@ export interface RadarCardConfig extends LovelaceCardConfig {
   legend_position?: LegendPosition;
   legend_show_distance?: boolean;
   show_grid_labels?: boolean;
+  show_avatars?: boolean;
+  show_zones?: boolean;
+  hide_at_home?: boolean;
   center_latitude?: number;
   center_longitude?: number;
   center_entity?: string;
@@ -106,6 +112,16 @@ export interface RadarMarker {
   icon?: string;
   color?: string;
   isEditing?: boolean;
+}
+
+export interface RadarZone {
+  entity_id: string;
+  name: string;
+  distance: number;
+  azimuth: number;
+  radius: number;
+  icon?: string;
+  color?: string;
 }
 
 export interface HaDialog extends HTMLElement {
