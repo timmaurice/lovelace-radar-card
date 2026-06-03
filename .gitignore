@@ -7,3 +7,9 @@ bun.lock
 yarn.lock
 
 .DS_Store
+
+venv/
+
+test-env/config/*
+!test-env/config/configuration.yaml
+!test-env/config/ui-lovelace.yaml

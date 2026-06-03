@@ -55,9 +55,12 @@
   "card": {
     "distance": "Distance",
     "azimuth": "Azimuth",
-    "no_home_location": "Center location is not set in Home Assistant and no custom coordinates are provided.",
-    "multiple_center_definitions": "Please provide either a zone entity or manual coordinates for the center, not both.",
-    "incomplete_center_coords": "Please provide both Center Latitude and Center Longitude.",
+    "error": {
+      "no_home_location": "Center location is not set in Home Assistant and no custom coordinates are provided.",
+      "multiple_center_definitions": "Please provide either a zone entity or manual coordinates for the center, not both.",
+      "incomplete_center_coords": "Please provide both Center Latitude and Center Longitude.",
+      "invalid_entity_coords": "Radar-card: Entity '{entity}' does not have valid latitude and longitude attributes."
+    },
     "no_entities": "No entities to show",
     "dialog": {
       "name": "Name",

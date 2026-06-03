@@ -52,9 +52,12 @@
   "card": {
     "distance": "Entfernung",
     "azimuth": "Azimut",
-    "no_home_location": "Mittelpunkt ist in Home Assistant nicht festgelegt und es wurden keine benutzerdefinierten Koordinaten angegeben.",
-    "multiple_center_definitions": "Bitte geben Sie entweder eine Zonen-Entität oder manuelle Koordinaten für den Mittelpunkt an, nicht beides.",
-    "incomplete_center_coords": "Bitte geben Sie sowohl den Mittelpunkt-Breitengrad als auch den Mittelpunkt-Längengrad an.",
+    "error": {
+      "no_home_location": "Mittelpunkt ist in Home Assistant nicht festgelegt und es wurden keine benutzerdefinierten Koordinaten angegeben.",
+      "multiple_center_definitions": "Bitte geben Sie entweder eine Zonen-Entität oder manuelle Koordinaten für den Mittelpunkt an, nicht beides.",
+      "incomplete_center_coords": "Bitte geben Sie sowohl den Mittelpunkt-Breitengrad als auch den Mittelpunkt-Längengrad an.",
+      "invalid_entity_coords": "Radar-card: Entität '{entity}' hat keine gültigen Breitengrad- und Längengrad-Attribute."
+    },
     "no_entities": "Keine Entitäten zum Anzeigen",
     "dialog": {
       "name": "Name",

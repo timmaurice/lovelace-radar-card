@@ -12,6 +12,7 @@
 
   > * {
     flex: 1;
+    min-width: 0;
   }
 }
 
@@ -138,7 +139,7 @@
   display: flex;
   gap: 8px;
 
-  ha-textfield {
+  ha-input {
     flex-grow: 1;
   }
 

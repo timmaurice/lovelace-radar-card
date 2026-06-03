@@ -55,9 +55,12 @@
   "card": {
     "distance": "Odległość",
     "azimuth": "Azymut",
-    "no_home_location": "Środek lokalizacji nie został ustawiony w Home Assistancie i brak jest współrzędnych użytkownika.",
-    "multiple_center_definitions": "Wskaż encję strefy albo podaj współrzędne środka. Wybierz tylko jedną z tych możliwości.",
-    "incomplete_center_coords": "Podaj współrzędne długości i szerokości geograficznej środka.",
+    "error": {
+      "no_home_location": "Środek lokalizacji nie został ustawiony w Home Assistancie i brak jest współrzędnych użytkownika.",
+      "multiple_center_definitions": "Wskaż encję strefy albo podaj współrzędne środka. Wybierz tylko jedną z tych możliwości.",
+      "incomplete_center_coords": "Podaj współrzędne długości i szerokości geograficznej środka.",
+      "invalid_entity_coords": "Radar-card: Encja '{entity}' nie posiada poprawnych atrybutów szerokości i długości geograficznej."
+    },
     "no_entities": "Brak encji do wyświetlenia",
     "dialog": {
       "name": "Nazwa",

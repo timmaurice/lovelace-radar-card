@@ -167,6 +167,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       newConfig[configValue] = target.type === 'number' ? Number(value) : value;
     }
 
+    this._config = newConfig;
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
@@ -186,6 +187,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
       delete newConfig.location_zone_entity;
     }
 
+    this._config = newConfig;
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
@@ -272,11 +274,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         const newEntityConf = { ...entities[index as number] };
         delete newEntityConf[configValue as keyof RadarCardEntityConfig];
         entities[index as number] = newEntityConf;
-        fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+        this._config = { ...this._config, entities };
+        fireEvent(this, 'config-changed', { config: this._config });
       } else {
         // It's a global config
         const newConfig = { ...this._config };
         delete newConfig[configValue as keyof RadarCardConfig];
+        this._config = newConfig;
         fireEvent(this, 'config-changed', { config: newConfig });
       }
       this._closeColorPicker();
@@ -287,7 +291,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
 
     return html`
       <div class="color-input-wrapper" data-picker-id=${pickerId}>
-        <ha-textfield
+        <ha-input
           .label=${label}
           .value=${value}
           .configValue=${configValue}
@@ -298,7 +302,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         >
           ${value
             ? html`<ha-icon-button
-                slot="trailingIcon"
+                slot="end"
                 class="clear-button"
                 .label=${'Clear'}
                 @click=${handleClear}
@@ -307,7 +311,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 <ha-icon icon="mdi:close"></ha-icon>
               </ha-icon-button>`
             : nothing}
-        </ha-textfield>
+        </ha-input>
         <div
           class="color-preview"
           style="background-color: ${resolvedValue || 'transparent'}"
@@ -335,13 +339,15 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
 
   private _addEntity(): void {
     const entities = [...this._getEntities(), { entity: '' }];
-    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+    this._config = { ...this._config, entities };
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   private _removeEntity(index: number): void {
     const entities = [...this._getEntities()];
     entities.splice(index, 1);
-    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+    this._config = { ...this._config, entities };
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   private _entityAttributeChanged(ev: Event): void {
@@ -371,7 +377,8 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     }
 
     entities[index] = newEntityConf;
-    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+    this._config = { ...this._config, entities };
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   private _entityValueChanged(ev: CustomEvent): void {
@@ -379,7 +386,8 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     const index = target.index as number;
     const entities = [...this._getEntities()];
     entities[index] = { ...entities[index], entity: target.value };
-    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+    this._config = { ...this._config, entities };
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   private _testAnimation(): void {
@@ -434,7 +442,8 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     const entities = [...this._getEntities()];
     const [draggedItem] = entities.splice(this._draggedIndex, 1);
     entities.splice(dropIndex, 0, draggedItem);
-    fireEvent(this, 'config-changed', { config: { ...this._config, entities } });
+    this._config = { ...this._config, entities };
+    fireEvent(this, 'config-changed', { config: this._config });
   }
 
   private _handleDragEnd(): void {
@@ -464,13 +473,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
           <span class="title">${title}</span>
         </div>
         <div class="option-group">
-          <ha-textfield
+          <ha-input
             .label=${localize(this.hass, 'component.radar-card.editor.name')}
             .value=${entityConf.name || ''}
             .configValue=${'name'}
             data-index=${this._editingIndex}
             @input=${this._entityAttributeChanged}
-          ></ha-textfield>
+          ></ha-input>
           ${this._renderColorInput(
             localize(this.hass, 'component.radar-card.editor.color'),
             'color',
@@ -510,12 +519,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         <div class="card-content card-config">
           <div class="option-group">
             <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.data')}</div>
-            <ha-textfield
+            <ha-input
               .label=${localize(this.hass, 'component.radar-card.editor.title')}
               .value=${this._config.title || ''}
               .configValue=${'title'}
               @input=${this._valueChanged}
-            ></ha-textfield>
+            ></ha-input>
             <div class="option-row">
               <ha-switch
                 .checked=${this._config.auto_radar_max_distance !== false}
@@ -543,13 +552,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             ${this._config.auto_radar_max_distance !== false
               ? nothing
               : html`
-                  <ha-textfield
+                  <ha-input
                     .label=${localize(this.hass, 'component.radar-card.editor.radar_max_distance')}
                     type="number"
                     .value=${this._config.radar_max_distance || ''}
                     .configValue=${'radar_max_distance'}
                     @input=${this._valueChanged}
-                  ></ha-textfield>
+                  ></ha-input>
                 `}
             <div class="option-row">
               <ha-switch
@@ -769,23 +778,32 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             </div>
             ${this._config.show_legend !== false
               ? html`
-                  <ha-select
+                  <ha-selector
+                    .hass=${this.hass}
                     .label=${localize(this.hass, 'component.radar-card.editor.legend_position')}
+                    .selector=${{
+                      select: {
+                        mode: 'dropdown',
+                        options: [
+                          {
+                            value: 'bottom',
+                            label: localize(this.hass, 'component.radar-card.editor.legend_positions.bottom'),
+                          },
+                          {
+                            value: 'right',
+                            label: localize(this.hass, 'component.radar-card.editor.legend_positions.right'),
+                          },
+                          {
+                            value: 'left',
+                            label: localize(this.hass, 'component.radar-card.editor.legend_positions.left'),
+                          },
+                        ],
+                      },
+                    }}
                     .value=${this._config.legend_position || 'bottom'}
                     .configValue=${'legend_position'}
-                    @selected=${this._valueChanged}
-                    @closed=${(ev: Event) => ev.stopPropagation()}
-                  >
-                    <mwc-list-item value="bottom"
-                      >${localize(this.hass, 'component.radar-card.editor.legend_positions.bottom')}</mwc-list-item
-                    >
-                    <mwc-list-item value="right"
-                      >${localize(this.hass, 'component.radar-card.editor.legend_positions.right')}</mwc-list-item
-                    >
-                    <mwc-list-item value="left"
-                      >${localize(this.hass, 'component.radar-card.editor.legend_positions.left')}</mwc-list-item
-                    >
-                  </ha-select>
+                    @value-changed=${this._valueChanged}
+                  ></ha-selector>
                   <div class="option-row">
                     <ha-switch
                       .checked=${this._config.legend_show_distance !== false}
@@ -810,14 +828,15 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             ${this._config.animation_enabled !== false
               ? html`
                   <div class="duration-with-test-button">
-                    <ha-textfield
+                    <ha-input
                       .label=${localize(this.hass, 'component.radar-card.editor.animation_duration')}
                       type="number"
                       .value=${this._config.animation_duration || ''}
                       .configValue=${'animation_duration'}
                       @input=${this._valueChanged}
-                      .suffix=${'ms'}
-                    ></ha-textfield>
+                    >
+                      <span slot="suffix">ms</span>
+                    </ha-input>
                     <ha-button @click=${this._testAnimation}>
                       ${localize(this.hass, 'component.radar-card.editor.test_animation')}
                     </ha-button>
@@ -851,7 +870,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
             ${this._config.moving_animation_enabled === true
               ? html`
                   <div class="side-by-side">
-                    <ha-textfield
+                    <ha-input
                       .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute')}
                       .value=${this._config.moving_animation_attribute || ''}
                       .configValue=${'moving_animation_attribute'}
@@ -859,8 +878,8 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                       @input=${this._valueChanged}
                       .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute_help')}
                       .helperPersistent=${true}
-                    ></ha-textfield>
-                    <ha-textfield
+                    ></ha-input>
+                    <ha-input
                       .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities')}
                       .value=${(this._config.moving_animation_activities || []).join(', ')}
                       .configValue=${'moving_animation_activities'}
@@ -868,7 +887,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                       @input=${this._valueChanged}
                       .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities_help')}
                       .helperPersistent=${true}
-                    ></ha-textfield>
+                    ></ha-input>
                   </div>
                 `
               : nothing}

@@ -52,9 +52,12 @@
   "card": {
     "distance": "Distance",
     "azimuth": "Azimut",
-    "no_home_location": "L'emplacement du centre n'est pas défini dans Home Assistant et aucune coordonnée personnalisée n'est fournie.",
-    "multiple_center_definitions": "Veuillez fournir soit une entité de zone, soit des coordonnées manuelles pour le centre, mais pas les deux.",
-    "incomplete_center_coords": "Veuillez fournir à la fois la latitude et la longitude du centre.",
+    "error": {
+      "no_home_location": "L'emplacement du centre n'est pas défini dans Home Assistant et aucune coordonnée personnalisée n'est fournie.",
+      "multiple_center_definitions": "Veuillez fournir soit une entité de zone, soit des coordonnées manuelles pour le centre, mais pas les deux.",
+      "incomplete_center_coords": "Veuillez fournir à la fois la latitude et la longitude du centre.",
+      "invalid_entity_coords": "Radar-card: L'entité '{entity}' n'a pas d'attributs de latitude et de longitude valides."
+    },
     "no_entities": "Aucune entité à afficher",
     "dialog": {
       "name": "Nom",

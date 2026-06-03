@@ -997,14 +997,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const state = this.hass.states[entityId];
     if (!state) return null;
 
-    const lat = state.attributes.latitude;
-    const lon = state.attributes.longitude;
+    const lat = parseFloat(state.attributes.latitude);
+    const lon = parseFloat(state.attributes.longitude);
 
-    if (typeof lat === 'number' && typeof lon === 'number') {
+    if (!isNaN(lat) && !isNaN(lon)) {
       return { lat, lon };
     }
 
-    this._error = `Radar-card: Entity '${entityId}' does not have valid latitude and longitude attributes.`;
+    this._error = localize(this.hass, 'component.radar-card.card.error.invalid_entity_coords', { entity: entityId });
     return null;
   }
 
@@ -1105,12 +1105,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
         (this._config.center_latitude != null && this._config.center_longitude == null) ||
         (this._config.center_latitude == null && this._config.center_longitude != null)
       ) {
-        this._error = localize(this.hass, 'component.radar-card.card.incomplete_center_coords');
+        this._error = localize(this.hass, 'component.radar-card.card.error.incomplete_center_coords');
         return;
       }
 
       if (this._config.location_zone_entity && (this._config.center_latitude || this._config.center_longitude)) {
-        this._error = localize(this.hass, 'component.radar-card.card.multiple_center_definitions');
+        this._error = localize(this.hass, 'component.radar-card.card.error.multiple_center_definitions');
         return;
       }
 
@@ -1140,7 +1140,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       }
 
       if (!hasValidCenter) {
-        this._error = localize(this.hass, 'component.radar-card.card.no_home_location');
+        this._error = localize(this.hass, 'component.radar-card.card.error.no_home_location');
         return;
       }
 

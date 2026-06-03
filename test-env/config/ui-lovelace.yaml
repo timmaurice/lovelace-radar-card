@@ -1,0 +1,42 @@
+title: Test
+views:
+  - title: Home
+    path: home
+    cards:
+      - type: custom:radar-card
+        title: Radar Card (Centered on Me)
+        center_entity: sensor.me
+        show_avatars: true
+        entities:
+          - entity: sensor.my_car
+            name: My Car
+            color: '#3498db'
+          - entity: sensor.my_dog
+            name: My Dog
+            color: '#e67e22'
+          - entity: sensor.lightning_strike_1
+            name: Lightning Strike
+            color: '#f1c40f'
+
+      - type: custom:radar-card
+        title: Radar Card (Centered on House)
+        location_zone_entity: zone.home
+        show_avatars: true
+        entities:
+          - entity: sensor.me
+            name: Me
+            color: '#2ecc71'
+          - entity: sensor.my_car
+            name: My Car
+            color: '#3498db'
+          - entity: sensor.my_dog
+            name: My Dog
+            color: '#e67e22'
+          - entity: sensor.lightning_strike_1
+            name: Lightning Strike
+            color: '#f1c40f'
+  - title: Empty
+    path: empty
+    cards:
+      - type: markdown
+        content: Empty view to test unmounting

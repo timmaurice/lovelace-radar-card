@@ -1,0 +1,38 @@
+default_config:
+
+lovelace:
+  resource_mode: yaml
+  resources:
+    - url: /local/dist/radar-card.js
+      type: module
+  dashboards:
+    lovelace:
+      mode: yaml
+      filename: ui-lovelace.yaml
+      title: Overview
+      icon: mdi:view-dashboard
+      show_in_sidebar: true
+
+template:
+  - sensor:
+      - name: my_car
+        state: 'parked'
+        attributes:
+          latitude: 52.3745339
+          longitude: 4.8923147
+          friendly_name: 'My Car'
+          entity_picture: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=128'
+      - name: my_dog
+        state: 'running'
+        attributes:
+          latitude: 52.3715339
+          longitude: 4.8873147
+          friendly_name: 'My Dog'
+          entity_picture: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=128'
+      - name: me
+        state: 'away'
+        attributes:
+          latitude: 52.3735339
+          longitude: 4.8905147
+          friendly_name: 'Me'
+          entity_picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=128'

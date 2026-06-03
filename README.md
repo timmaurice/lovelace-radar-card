@@ -194,7 +194,13 @@ entities:
     npm run watch
     ```
 
-4.  In your Home Assistant instance, you will need to configure Lovelace to use the local development version of the card from `dist/radar-card.js`.
+4.  **Test locally with Docker:**
+    We provide a pre-configured Home Assistant Docker environment for testing.
+    ```bash
+    cd test-env
+    docker compose up -d
+    ```
+    Open `http://localhost:8133` in your browser. Your local `dist/radar-card.js` is automatically mounted, so changes will reflect after a hard refresh.
 </details>
 
 ---
