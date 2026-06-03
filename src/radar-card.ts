@@ -997,8 +997,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const state = this.hass.states[entityId];
     if (!state) return null;
 
-    const lat = parseFloat(state.attributes.latitude);
-    const lon = parseFloat(state.attributes.longitude);
+    const lat = parseFloat(state.attributes.latitude as string);
+    const lon = parseFloat(state.attributes.longitude as string);
 
     if (!isNaN(lat) && !isNaN(lon)) {
       return { lat, lon };

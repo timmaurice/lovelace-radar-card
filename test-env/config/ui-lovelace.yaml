@@ -14,6 +14,9 @@ views:
           - entity: sensor.my_dog
             name: My Dog
             color: '#e67e22'
+            moving_animation_attribute: activity
+            moving_animation_activities:
+              - Walking
           - entity: sensor.lightning_strike_1
             name: Lightning Strike
             color: '#f1c40f'
@@ -32,9 +35,10 @@ views:
           - entity: sensor.my_dog
             name: My Dog
             color: '#e67e22'
-          - entity: sensor.lightning_strike_1
-            name: Lightning Strike
-            color: '#f1c40f'
+        moving_animation_enabled: true
+        moving_animation_attribute: activity
+        moving_animation_activities:
+          - Walking
   - title: Empty
     path: empty
     cards:

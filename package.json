@@ -1,6 +1,6 @@
 {
   "name": "radar-card",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Plot multiple `device_tracker` entities on a polar chart.",
   "homepage": "https://github.com/timmaurice/lovelace-radar-card#readme",
   "bugs": {
@@ -33,7 +33,7 @@
     "@types/d3-scale": "^4.0.9",
     "@types/d3-selection": "^3.0.11",
     "@types/d3-transition": "^3.0.9",
-    "eslint": "^10.4.0",
+    "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-lit": "^2.3.1",
     "eslint-plugin-wc": "^3.1.0",
@@ -41,12 +41,12 @@
     "jsdom": "^29.1.1",
     "lit": "^3.3.3",
     "prettier": "^3.8.3",
-    "rollup": "^4.60.4",
+    "rollup": "^4.61.0",
     "rollup-plugin-lit-css": "^6.0.1",
     "sass": "^1.100.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.60.0",
-    "vitest": "^4.1.7"
+    "typescript-eslint": "^8.60.1",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "custom-card-helpers": "^2.0.0",

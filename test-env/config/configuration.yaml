@@ -28,6 +28,7 @@ template:
           latitude: 52.3715339
           longitude: 4.8873147
           friendly_name: 'My Dog'
+          activity: 'Walking'
           entity_picture: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=128'
       - name: me
         state: 'away'

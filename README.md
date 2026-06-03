@@ -201,6 +201,7 @@ entities:
     docker compose up -d
     ```
     Open `http://localhost:8133` in your browser. Your local `dist/radar-card.js` is automatically mounted, so changes will reflect after a hard refresh.
+
 </details>
 
 ---
