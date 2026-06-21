@@ -108,6 +108,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     if (booleanToggles.includes(configValue as keyof RadarCardConfig)) {
       this._handleBooleanToggle(newConfig, configValue as keyof RadarCardConfig, value as boolean, true);
       if (configValue === 'auto_radar_max_distance' && value) delete newConfig.radar_max_distance;
+      if (configValue === 'animation_enabled' && !value) delete newConfig.animation_duration;
       if (configValue === 'show_legend' && !value) {
         delete newConfig.legend_position;
         delete newConfig.legend_show_distance;
