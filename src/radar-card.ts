@@ -41,6 +41,7 @@ declare global {
       description: string;
       documentationURL: string;
       preview?: boolean;
+      getEntitySuggestion?: (hass: HomeAssistant, entityId: string) => { config: Record<string, unknown> } | null;
     }[];
   }
 }
@@ -1179,5 +1180,17 @@ if (typeof window !== 'undefined') {
     description: 'A card to display radar data.',
     documentationURL: 'https://github.com/timmaurice/lovelace-radar-card',
     preview: true,
+    getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
+      const stateObj = hass.states[entityId];
+      if (stateObj?.attributes?.latitude != null && stateObj?.attributes?.longitude != null) {
+        return {
+          config: {
+            type: `custom:${ELEMENT_NAME}`,
+            entities: [entityId],
+          },
+        };
+      }
+      return null;
+    },
   });
 }

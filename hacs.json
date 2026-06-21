@@ -2,5 +2,6 @@
   "name": "Radar card",
   "content_in_root": false,
   "render_readme": true,
-  "filename": "radar-card.js"
+  "filename": "radar-card.js",
+  "homeassistant": "2026.6.0"
 }
