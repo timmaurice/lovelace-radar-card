@@ -809,7 +809,7 @@ describe('RadarCard', () => {
       renderSpy.mockClear();
 
       window.dispatchEvent(new CustomEvent('radar-card-test-animation'));
-      expect(renderSpy).toHaveBeenCalledWith(expect.anything(), true);
+      expect(renderSpy).toHaveBeenCalledWith(true);
     });
   });
   describe('Zone Entity Center', () => {

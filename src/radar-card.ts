@@ -28,6 +28,9 @@ import { ELEMENT_NAME, EDITOR_ELEMENT_NAME } from './constants.js';
 const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
 const RADAR_CHART_MARGIN = 20;
+/** Rings drawn on the radar, the outermost one on the chart's edge. */
+const GRID_RING_COUNT = 4;
+
 // A radar where every entity sits at the same spot (a single tracker at home, for example)
 // would give the scale a zero-width domain: d3 then maps every point to half the radius and
 // ticks() returns nothing, so the rings disappear. This value is the fallback for exactly that
@@ -36,9 +39,6 @@ const RADAR_CHART_MARGIN = 20;
 // its own data, or the outer rings become permanent dead space.
 // The number is in the user's display unit, so it is not the same physical length in km and mi;
 // that is acceptable because it is only ever used when there is no real distance to show.
-/** Rings drawn on the radar, the outermost one on the chart's edge. */
-const GRID_RING_COUNT = 4;
-
 const MIN_RADAR_MAX_DISTANCE = 0.1;
 
 const MARKER_STORAGE_KEY = 'radar-card-markers';
@@ -113,7 +113,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
   private _runTestAnimation = (): void => {
     if (this.editMode && this._config.animation_enabled !== false) {
-      this._renderRadarChart(this._points, true);
+      this._renderRadarChart(true);
       this._isTestingAnimation = true;
       const duration = this._config.animation_duration ?? 750;
       // Kept so `disconnectedCallback` can cancel it: a card torn down mid-test
@@ -454,7 +454,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
     return point.distance > this._getMaxRadarDistance(this._points);
   }
 
-  private _renderRadarChart(points: RadarPoint[], animate = false) {
+  // Reads this._points rather than taking them as a parameter: _isBeyondRange() derives the
+  // same maximum from this._points, and the chart's out-of-range class and the legend's have to
+  // come from one expression. Two that merely happen to agree is the divergence this round
+  // removed from the zone filter.
+  private _renderRadarChart(animate = false) {
+    const points = this._points;
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
 
@@ -1414,7 +1419,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
       const shouldAnimate =
         this._config.animation_enabled !== false && !this.editMode && !this._hasAnimated && this._points.length > 0;
-      this._renderRadarChart(this._points, shouldAnimate);
+      this._renderRadarChart(shouldAnimate);
       if (shouldAnimate) {
         this._hasAnimated = true;
       }
