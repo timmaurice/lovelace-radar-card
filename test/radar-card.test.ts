@@ -540,6 +540,110 @@ describe('RadarCard', () => {
       expect(Math.max(...radii)).toBeCloseTo(90, 0);
       expect(Math.min(...radii)).toBeLessThan(10);
     });
+
+    it('should still draw grid rings when the most distant entity is at distance 0', async () => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'home',
+        // Exactly on the configured home coordinates, so the distance is 0.
+        attributes: { latitude: 52.520008, longitude: 13.404954, friendly_name: 'Test Device' },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const gridCircles = element.shadowRoot?.querySelectorAll<SVGCircleElement>('.grid-circle');
+      expect(gridCircles?.length).toBeGreaterThan(0);
+      const radii = Array.from(gridCircles!).map((c) => parseFloat(c.getAttribute('r') || '0'));
+      expect(Math.min(...radii)).toBeGreaterThan(0);
+      expect(radii.every((r) => Number.isFinite(r))).toBe(true);
+    });
+
+    it('should place an entity at distance 0 in the center, not at half the radius', async () => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'home',
+        attributes: { latitude: 52.520008, longitude: 13.404954, friendly_name: 'Test Device' },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      const match = entityGroup?.getAttribute('transform')?.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      expect(match).not.toBeNull();
+      const cx = parseFloat(match![1]);
+      const cy = parseFloat(match![2]);
+      expect(Math.sqrt(cx * cx + cy * cy)).toBeCloseTo(0, 5);
+    });
+
+    it('should scale to its own data when every entity is only tens of metres away', async () => {
+      // ~20 m and ~50 m north of the configured home coordinates.
+      hass.states['device_tracker.test_device_near'] = {
+        entity_id: 'device_tracker.test_device_near',
+        state: 'home',
+        attributes: { latitude: 52.520188, longitude: 13.404954, friendly_name: 'Near Device' },
+      } as HassEntity;
+      hass.states['device_tracker.test_device_edge'] = {
+        entity_id: 'device_tracker.test_device_edge',
+        state: 'home',
+        attributes: { latitude: 52.520458, longitude: 13.404954, friendly_name: 'Edge Device' },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.test_device_near', 'device_tracker.test_device_edge'],
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityGroups = element.shadowRoot?.querySelectorAll<SVGGElement>('g.entity-group');
+      const radii = Array.from(entityGroups!).map((group) => {
+        const match = group.getAttribute('transform')?.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (!match) return 0;
+        const cx = parseFloat(match[1]);
+        const cy = parseFloat(match[2]);
+        return Math.sqrt(cx * cx + cy * cy);
+      });
+
+      // The furthest entity defines the outer edge of the chart (radius 90), not a fixed 0.1
+      // floor, which would bunch both dots into the inner half.
+      expect(Math.max(...radii)).toBeCloseTo(90, 0);
+
+      // ...and the rings are labelled against that same ~50 m span, not against 0.1 km.
+      const gridLabels = element.shadowRoot?.querySelectorAll<SVGTextElement>('.grid-label');
+      const lastLabel = gridLabels?.[gridLabels!.length - 1]?.textContent ?? '';
+      const [outerValue, outerUnit] = lastLabel.trim().split(' ');
+      const outerMetres = outerUnit === 'km' ? parseFloat(outerValue) * 1000 : parseFloat(outerValue);
+      expect(outerMetres).toBeGreaterThan(0);
+      expect(outerMetres).toBeLessThan(60);
+    });
+  });
+
+  describe('Duplicate resource registration', () => {
+    it('should not throw when the bundle is evaluated a second time', async () => {
+      vi.resetModules();
+      await expect(import('../src/radar-card')).resolves.toBeDefined();
+    });
+
+    it('should register the card in customCards only once when loaded twice', async () => {
+      vi.resetModules();
+      await import('../src/radar-card');
+
+      const entries = (window.customCards ?? []).filter((card) => card.type === 'radar-card');
+      expect(entries).toHaveLength(1);
+    });
   });
 
   describe('Custom Center Coordinates', () => {
@@ -996,7 +1100,13 @@ describe('RadarCard', () => {
       document.body.appendChild(element);
       element.hass = hass;
       // Expanding boundary bounds massively to guarantee the mock park zone natively penetrates constraints
-      element.setConfig({ ...config, entities: ['device_tracker.tester'], show_zones: true, radar_max_distance: 1000 });
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.tester'],
+        show_zones: true,
+        auto_radar_max_distance: false,
+        radar_max_distance: 1000,
+      });
       await element.updateComplete;
       await vi.runAllTimersAsync();
 
@@ -1006,6 +1116,33 @@ describe('RadarCard', () => {
       // Asserts scale maps radius dynamically
       const radius = parseFloat(zoneOverlays?.[0].getAttribute('r') || '0');
       expect(radius).toBeGreaterThan(0);
+    });
+
+    it('should filter zones against the auto-scaled radius, not a stale radar_max_distance', async () => {
+      // Auto scaling is on (the default), so the chart scales to the furthest entity (~0.3 km here)
+      // and the leftover radar_max_distance must be ignored. The park zone sits ~2 km out, well
+      // outside the auto-scaled radar, so it must not be drawn.
+      hass.states['device_tracker.tester'] = {
+        entity_id: 'device_tracker.tester',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.tester'],
+        show_zones: true,
+        auto_radar_max_distance: true,
+        radar_max_distance: 5,
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const zoneOverlays = element.shadowRoot?.querySelectorAll<SVGCircleElement>('circle.zone-circle');
+      expect(zoneOverlays?.length).toBe(0);
     });
 
     it('should ignore home assistant zones natively when explicitly deactivated', async () => {

@@ -1,5 +1,5 @@
 import { LitElement, TemplateResult, html, css, unsafeCSS, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import {
   HomeAssistant,
   LovelaceCardConfig,
@@ -23,13 +23,20 @@ if (!window.customElements.get('hex-color-picker')) {
   window.customElements.define('hex-color-picker', class extends HexBase {});
 }
 import { getAzimuth, getDistance, fireEvent, formatDistance } from './utils.js';
-
-const ELEMENT_NAME = 'radar-card';
-const EDITOR_ELEMENT_NAME = `${ELEMENT_NAME}-editor`;
+import { ELEMENT_NAME, EDITOR_ELEMENT_NAME } from './constants.js';
 
 const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
 const RADAR_CHART_MARGIN = 20;
+// A radar where every entity sits at the same spot (a single tracker at home, for example)
+// would give the scale a zero-width domain: d3 then maps every point to half the radius and
+// ticks() returns nothing, so the rings disappear. This value is the fallback for exactly that
+// degenerate case — an outer distance of 0 — and nothing else. It must never act as a general
+// lower bound: a radar whose entities are all within a few tens of metres has to keep scaling to
+// its own data, or the outer rings become permanent dead space.
+// The number is in the user's display unit, so it is not the same physical length in km and mi;
+// that is acceptable because it is only ever used when there is no real distance to show.
+const MIN_RADAR_MAX_DISTANCE = 0.1;
 
 const MARKER_STORAGE_KEY = 'radar-card-markers';
 
@@ -71,7 +78,6 @@ type LovelaceCardConstructor = {
   getConfigElement(): Promise<LovelaceCardEditor>;
 };
 
-@customElement(ELEMENT_NAME)
 export class RadarCard extends LitElement implements LovelaceCard {
   @property({ type: Boolean, reflect: true }) public editMode = false;
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -321,6 +327,19 @@ export class RadarCard extends LitElement implements LovelaceCard {
     };
   }
 
+  /**
+   * Outer distance of the radar, in the display unit. The chart scale and the zone filter must
+   * agree on it — a zone shown outside the outermost ring, or hidden inside it, is a bug — so both
+   * derive it here instead of re-deriving it from the config independently.
+   */
+  private _getMaxRadarDistance(points: RadarPoint[]): number {
+    const autoRadar = this._config.auto_radar_max_distance !== false;
+    const maxDistance = autoRadar
+      ? (d3Max(points, (d) => d.distance) ?? 100)
+      : (this._config.radar_max_distance ?? 100);
+    return maxDistance > 0 ? maxDistance : MIN_RADAR_MAX_DISTANCE;
+  }
+
   private _renderRadarChart(points: RadarPoint[], animate = false) {
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
@@ -328,10 +347,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
     const distanceUnit = this.hass.config.unit_system.length || 'km';
     const duration = this._config.animation_duration ?? 750;
-    const autoRadar = this._config.auto_radar_max_distance !== false;
-    const maxDistance = autoRadar
-      ? (d3Max(points, (d) => d.distance) ?? 100)
-      : (this._config.radar_max_distance ?? 100);
+    const maxDistance = this._getMaxRadarDistance(points);
 
     const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
     const svgRoot = select(radarContainer)
@@ -987,7 +1003,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
           };
         });
 
-      const maxRadarDistance = this._config.radar_max_distance || Math.max(...this._points.map((p) => p.distance), 0.1);
+      const maxRadarDistance = this._getMaxRadarDistance(this._points);
       this._zones = zoneEntities.filter((z) => z.distance - z.radius <= maxRadarDistance);
     } else {
       this._zones = [];
@@ -1172,25 +1188,33 @@ export class RadarCard extends LitElement implements LovelaceCard {
   `;
 }
 
+// A duplicate Lovelace resource entry loads this bundle twice. An unguarded define throws and
+// takes the second copy down with it, so register only if nobody registered us before.
+if (!customElements.get(ELEMENT_NAME)) {
+  customElements.define(ELEMENT_NAME, RadarCard);
+}
+
 if (typeof window !== 'undefined') {
   window.customCards = window.customCards || [];
-  window.customCards.push({
-    type: ELEMENT_NAME,
-    name: 'Radar Card',
-    description: 'A card to display radar data.',
-    documentationURL: 'https://github.com/timmaurice/lovelace-radar-card',
-    preview: true,
-    getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
-      const stateObj = hass.states[entityId];
-      if (stateObj?.attributes?.latitude != null && stateObj?.attributes?.longitude != null) {
-        return {
-          config: {
-            type: `custom:${ELEMENT_NAME}`,
-            entities: [entityId],
-          },
-        };
-      }
-      return null;
-    },
-  });
+  if (!window.customCards.some((card) => card.type === ELEMENT_NAME)) {
+    window.customCards.push({
+      type: ELEMENT_NAME,
+      name: 'Radar Card',
+      description: 'A card to display radar data.',
+      documentationURL: 'https://github.com/timmaurice/lovelace-radar-card',
+      preview: true,
+      getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
+        const stateObj = hass.states[entityId];
+        if (stateObj?.attributes?.latitude != null && stateObj?.attributes?.longitude != null) {
+          return {
+            config: {
+              type: `custom:${ELEMENT_NAME}`,
+              entities: [entityId],
+            },
+          };
+        }
+        return null;
+      },
+    });
+  }
 }
