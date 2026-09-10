@@ -13,3 +13,7 @@ venv/
 test-env/config/*
 !test-env/config/configuration.yaml
 !test-env/config/ui-lovelace.yaml
+
+# Playwright
+test-results/
+playwright-report/
