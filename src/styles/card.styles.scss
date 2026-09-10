@@ -395,3 +395,11 @@ ha-dialog {
 .custom-tooltip .beyond-range {
   color: var(--warning-color);
 }
+
+/* Several entities beyond the maximum share one point on the rim, so one
+   tooltip has to speak for all of them. */
+.custom-tooltip .tooltip-stack-item + .tooltip-stack-item {
+  border-top: 1px solid var(--divider-color);
+  margin-top: 6px;
+  padding-top: 6px;
+}

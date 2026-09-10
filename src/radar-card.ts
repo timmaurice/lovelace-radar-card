@@ -204,7 +204,40 @@ export class RadarCard extends LitElement implements LovelaceCard {
     this._moveTooltip(event);
   }
 
+  /**
+   * The points the clamp draws on top of each other. Beyond the maximum every
+   * distance collapses onto the rim, so trackers sharing a bearing end up
+   * pixel-identical: distance ordering is gone and only the last group drawn
+   * can receive a `mouseover`. Keyboard users still reach each one through its
+   * own `tabindex`, so the mouse tooltip speaks for the whole pile instead,
+   * nearest first. Anything inside the radar keeps its own position and so
+   * stands alone.
+   */
+  private _getCoincidentPoints(point: RadarPoint): RadarPoint[] {
+    if (!this._isBeyondRange(point)) return [point];
+    const stacked = this._points.filter(
+      (other) => this._isBeyondRange(other) && Math.round(other.azimuth) === Math.round(point.azimuth),
+    );
+    return stacked.length > 1 ? [...stacked].sort((a, b) => a.distance - b.distance) : [point];
+  }
+
   private _getPointTooltipContent(point: RadarPoint, distanceUnit: string): TemplateResult {
+    const stacked = this._getCoincidentPoints(point);
+    if (stacked.length === 1) return this._getSinglePointTooltipContent(point, distanceUnit);
+
+    return html`
+      <div class="tooltip-stack">
+        ${stacked.map(
+          (stackedPoint) =>
+            html`<div class="tooltip-stack-item">
+              ${this._getSinglePointTooltipContent(stackedPoint, distanceUnit)}
+            </div>`,
+        )}
+      </div>
+    `;
+  }
+
+  private _getSinglePointTooltipContent(point: RadarPoint, distanceUnit: string): TemplateResult {
     const distanceStr = formatDistance(point.distance, distanceUnit, { locale: this._locale });
     return html`
       <strong>${point.name || point.entity_id}</strong><br />

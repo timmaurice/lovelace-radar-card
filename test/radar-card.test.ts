@@ -1190,6 +1190,71 @@ describe('RadarCard', () => {
       expect(near.querySelector('ha-icon.legend-beyond-range')).toBeNull();
     });
 
+    /**
+     * Beyond the maximum every distance collapses onto the rim, so trackers on
+     * one bearing are drawn at pixel-identical positions and only the topmost
+     * group can receive a `mouseover`. Keyboard users reach each of them
+     * through its own `tabindex`; the mouse tooltip has to name the whole pile.
+     */
+    it('should name every entity piled up on the same point of the rim', async () => {
+      const northAt = { 10: 52.60994, 50: 52.969669, 200: 54.318651 };
+      for (const [label, latitude] of Object.entries(northAt)) {
+        hass.states[`device_tracker.pile_${label}`] = {
+          entity_id: `device_tracker.pile_${label}`,
+          state: 'not_home',
+          attributes: { latitude, longitude: 13.404954, friendly_name: `Pile ${label}` },
+        } as HassEntity;
+      }
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.pile_10', 'device_tracker.pile_50', 'device_tracker.pile_200'],
+        auto_radar_max_distance: false,
+        radar_max_distance: 1,
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const groups = Array.from(element.shadowRoot!.querySelectorAll<SVGGElement>('g.entity-group'));
+      expect(groups).toHaveLength(3);
+      // All three really are on the same point - that is the premise.
+      const positions = new Set(groups.map((group) => group.getAttribute('transform')));
+      expect(positions.size).toBe(1);
+
+      // Only the last group drawn can be hovered, so that one must speak for all.
+      groups[groups.length - 1].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      await element.updateComplete;
+
+      const tooltip = element.shadowRoot!.querySelector('.custom-tooltip')!;
+      expect(tooltip.classList.contains('visible')).toBe(true);
+      for (const label of Object.keys(northAt)) expect(tooltip.textContent).toContain(`Pile ${label}`);
+      // Nearest first, so the ordering the clamp destroyed is readable again.
+      const order = Array.from(tooltip.querySelectorAll('.tooltip-stack-item strong')).map((el) => el.textContent);
+      expect(order).toEqual(['Pile 10', 'Pile 50', 'Pile 200']);
+    });
+
+    it('should keep the tooltip to one entity when nothing shares its point', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config130km());
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const groups = Array.from(element.shadowRoot!.querySelectorAll<SVGGElement>('g.entity-group'));
+      const far = groups.find((group) => group.querySelector('title')?.textContent?.startsWith('Far Device'))!;
+      far.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      await element.updateComplete;
+
+      const tooltip = element.shadowRoot!.querySelector('.custom-tooltip')!;
+      expect(tooltip.textContent).toContain('Far Device');
+      expect(tooltip.textContent).not.toContain('Near Device');
+      expect(tooltip.querySelectorAll('.tooltip-stack-item')).toHaveLength(0);
+    });
+
     it('should leave an auto-scaled radar without any out-of-range entity', async () => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);
