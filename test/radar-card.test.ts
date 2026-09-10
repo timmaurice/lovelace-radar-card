@@ -1380,6 +1380,31 @@ describe('RadarCard', () => {
       expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['person.tim'] });
     });
 
+    it('should skip an entity the card refuses to plot when picking the preview', () => {
+      // Coordinates outlive the state, but `_calculatePoints` will not plot an
+      // unavailable or unknown tracker from them - so picking one puts the
+      // preview right back to "No entities to show".
+      hass.states['device_tracker.gone'] = {
+        entity_id: 'device_tracker.gone',
+        state: 'unavailable',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+      hass.states['device_tracker.hazy'] = {
+        entity_id: 'device_tracker.hazy',
+        state: 'unknown',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['device_tracker.your_device'] });
+
+      hass.states['person.tim'] = {
+        entity_id: 'person.tim',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['person.tim'] });
+    });
+
     it('should fall back to the placeholder when nothing can be located', () => {
       expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['device_tracker.your_device'] });
       expect(RadarCardClass.getStubConfig()).toEqual({ entities: ['device_tracker.your_device'] });

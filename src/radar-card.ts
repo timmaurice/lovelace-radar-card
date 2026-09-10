@@ -165,12 +165,19 @@ export class RadarCard extends LitElement implements LovelaceCard {
    */
   public static getStubConfig(hass?: HomeAssistant): Record<string, unknown> {
     const locatable = hass?.states
-      ? Object.keys(hass.states).find(
-          (entityId) =>
+      ? Object.keys(hass.states).find((entityId) => {
+          const state = hass.states[entityId];
+          return (
             (entityId.startsWith('device_tracker.') || entityId.startsWith('person.')) &&
-            hass.states[entityId]?.attributes?.latitude != null &&
-            hass.states[entityId]?.attributes?.longitude != null,
-        )
+            // `_calculatePoints` refuses to plot these from their stale
+            // coordinates, so picking one reproduces the very "No entities to
+            // show" preview a real entity is meant to replace.
+            state?.state !== 'unavailable' &&
+            state?.state !== 'unknown' &&
+            state?.attributes?.latitude != null &&
+            state?.attributes?.longitude != null
+          );
+        })
       : undefined;
 
     return {
