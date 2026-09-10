@@ -111,6 +111,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   };
 
+  /** The language distances and numbers are written in. */
+  private get _locale(): string {
+    return this.hass?.locale?.language || this.hass?.language || 'en';
+  }
+
   public setConfig(config: RadarCardConfig): void {
     if (
       !config ||
@@ -159,7 +164,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   private _getPointTooltipContent(point: RadarPoint, distanceUnit: string): TemplateResult {
-    const distanceStr = formatDistance(point.distance, distanceUnit);
+    const distanceStr = formatDistance(point.distance, distanceUnit, { locale: this._locale });
     return html`
       <strong>${point.name || point.entity_id}</strong><br />
       ${localize(this.hass, 'component.radar-card.card.distance')}: ${distanceStr}<br />
@@ -168,7 +173,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   private _getPointAccessibleLabel(point: RadarPoint, distanceUnit: string): string {
-    const distanceStr = formatDistance(point.distance, distanceUnit);
+    const distanceStr = formatDistance(point.distance, distanceUnit, { locale: this._locale });
     const name = point.name || point.entity_id;
     const distanceLabel = localize(this.hass, 'component.radar-card.card.distance');
     const azimuthLabel = localize(this.hass, 'component.radar-card.card.azimuth');
@@ -326,7 +331,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
       id: now.toISOString(),
       latitude: centerCoords.lat,
       longitude: centerCoords.lon,
-      name: `Marker ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`,
+      name: localize(this.hass, 'component.radar-card.card.marker_default_name', {
+        date: now.toLocaleDateString(this._locale),
+        time: now.toLocaleTimeString(this._locale),
+      }),
     };
   }
 
@@ -366,9 +374,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .data([null])
       .join('desc')
       .attr('id', 'radar-desc')
-      .text(
-        `Showing ${points.length} entities. The center is your location. Entities are plotted by distance and direction.`,
-      );
+      .text(localize(this.hass, 'component.radar-card.card.a11y.description', { count: points.length }));
 
     const svg = svgRoot
       .selectAll('g.radar-main-group')
@@ -410,7 +416,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
     gridSelection.style('stroke', this._config.grid_color ?? 'var(--primary-text-color)').style('opacity', 0.3);
 
     if (this._config.show_grid_labels !== false) {
-      const labels = gridCircles.map((d) => formatDistance(d, distanceUnit, { removeIntegerDecimals: true }));
+      const labels = gridCircles.map((d) =>
+        formatDistance(d, distanceUnit, { removeIntegerDecimals: true, locale: this._locale }),
+      );
       const units = labels.map((l) => l.split(' ')[1]);
 
       // Add grid circle labels
@@ -780,7 +788,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
                 type="button"
                 class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
                 aria-pressed="${point.entity_id === this._pulsingEntityId}"
-                aria-label="Toggle pulse for ${point.name}"
+                aria-label=${localize(this.hass, 'component.radar-card.card.a11y.toggle_pulse', {
+                  name: point.name ?? point.entity_id ?? '',
+                })}
                 @click=${() => this._handleLegendItemClick(point)}
               >
                 ${
@@ -803,7 +813,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
                 <div class="legend-text-container ${!showDistance ? 'no-distance' : ''}">
                   <span class="legend-name">${point.name}</span>${
                     showDistance
-                      ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
+                      ? html` <span class="legend-distance"
+                          >(${formatDistance(point.distance, distanceUnit, { locale: this._locale })})</span
+                        >`
                       : nothing
                   }
                 </div>
@@ -813,7 +825,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
                   ? html`<ha-icon-button
                       mini
                       class="edit-marker-icon"
-                      .label=${'Edit Marker'}
+                      .label=${localize(this.hass, 'component.radar-card.card.dialog.edit_marker')}
                       @click=${(e: Event) => {
                         e.stopPropagation(); // Prevent the legend item click from firing
                         this._handleMarkerClick(point);

@@ -7,7 +7,13 @@ import { handleAction } from 'custom-card-helpers';
 
 // Mock the localize function
 vi.mock('../src/localize', () => ({
-  localize: (hass: HomeAssistant, key: string): string => {
+  localize: (hass: HomeAssistant, key: string, placeholders: Record<string, string | number> = {}): string => {
+    if (key === 'component.radar-card.card.a11y.toggle_pulse') {
+      return `Toggle pulse for ${placeholders.name}`;
+    }
+    if (key === 'component.radar-card.card.a11y.description') {
+      return `Showing ${placeholders.count} entities.`;
+    }
     if (key === 'component.radar-card.card.no_entities') {
       return 'No entities to show';
     }
@@ -925,7 +931,9 @@ describe('RadarCard', () => {
 
       const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
       expect(dialog).not.toBeNull();
-      expect(dialog?.heading).toContain('Marker');
+      // The default name comes from the translations now, not from a hard-coded
+      // English string, so the mock's key stand-in is what lands in the heading.
+      expect(dialog?.heading).toContain('marker_default_name');
     });
 
     it('should add a marker when dialog is saved', async () => {
@@ -1085,6 +1093,47 @@ describe('RadarCard', () => {
 
       const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
       expect(entityDot?.style.display).toBe('block');
+    });
+  });
+
+  describe('Localized texts', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: { latitude: 52.53, longitude: 13.41, friendly_name: 'Test Device' },
+      } as HassEntity;
+    });
+
+    it('should localize the chart description and the legend toggle instead of hard-coding English', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      expect(element.shadowRoot?.querySelector('desc')?.textContent).toBe('Showing 1 entities.');
+      expect(element.shadowRoot?.querySelector('.legend-item')?.getAttribute('aria-label')).toBe(
+        'Toggle pulse for Test Device',
+      );
+    });
+
+    it("should write the distance the way the reader's language writes it", async () => {
+      hass.language = 'de';
+      hass.locale = { ...hass.locale, language: 'de' };
+      hass.states['device_tracker.test_device'].attributes.latitude = 52.5317;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      // toFixed writes a decimal point whatever the language, so this legend
+      // used to read "1.34 km" on a German card.
+      expect(element.shadowRoot?.querySelector('.legend-distance')?.textContent).toBe('(1,34 km)');
     });
   });
 

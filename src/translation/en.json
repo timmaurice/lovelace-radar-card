@@ -62,13 +62,19 @@
       "invalid_entity_coords": "Radar-card: Entity '{entity}' does not have valid latitude and longitude attributes."
     },
     "no_entities": "No entities to show",
+    "a11y": {
+      "description": "Showing {count} entities. The center is your location. Entities are plotted by distance and direction.",
+      "toggle_pulse": "Toggle pulse for {name}"
+    },
+    "marker_default_name": "Marker {date} {time}",
     "dialog": {
       "name": "Name",
       "color": "Color",
       "cancel": "Cancel",
       "delete": "Delete",
       "save": "Save",
-      "add_marker_button": "Add Marker at Center Point (Current Location)"
+      "add_marker_button": "Add Marker at Center Point (Current Location)",
+      "edit_marker": "Edit Marker"
     },
     "directions": {
       "N": "N",
