@@ -945,6 +945,30 @@ describe('RadarCard', () => {
       expect(dialog?.heading).toContain('marker_default_name');
     });
 
+    it('should not leave an error banner behind when the gesture finds no centre', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      // The centre entity goes away between renders. Only `willUpdate` clears
+      // `_error`, and a click alone does not re-run it, so an error raised from
+      // the gesture would replace the whole card with a banner nothing takes
+      // down again.
+      delete hass.states['device_tracker.center_device'];
+
+      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
+      fab?.click();
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      expect(element.shadowRoot?.querySelector('.card-content.warning')).toBeNull();
+      // No centre, so no marker dialog either - it just does nothing.
+      expect(element.shadowRoot?.querySelector('ha-dialog')).toBeNull();
+    });
+
     it('should add a marker when dialog is saved', async () => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);

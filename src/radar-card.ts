@@ -414,7 +414,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
   private _addMarker(): void {
     if (!this._config.center_entity) return;
-    const centerCoords = this._getCoordsFromState(this._config.center_entity);
+    // A gesture, not a render: `willUpdate` validates and reports on the centre
+    // entity, so raising a card-wide error from here would only leave a banner
+    // standing that nothing clears.
+    const centerCoords = this._getCoordsFromState(this._config.center_entity, false);
     if (!centerCoords) return;
 
     const now = new Date();
@@ -1216,13 +1219,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _getCoordsFromState(entityId: string): { lat: number; lon: number } | null {
+  /**
+   * `reportError` exists because only `willUpdate` clears `_error` before it
+   * runs. A caller outside that reset - a user gesture, say - would otherwise
+   * leave a card-wide error banner behind that nothing takes down again, for a
+   * centre the config path has already validated and reported on.
+   */
+  private _getCoordsFromState(entityId: string, reportError = true): { lat: number; lon: number } | null {
     const state = this.hass.states[entityId];
     if (!state) {
       // Returning a bare null left the caller to report "No entities to show"
       // for what is really a broken config, and the entity id never reached the
       // reader.
-      this._error = localize(this.hass, 'component.radar-card.card.error.entity_not_found', { entity: entityId });
+      if (reportError) {
+        this._error = localize(this.hass, 'component.radar-card.card.error.entity_not_found', { entity: entityId });
+      }
       return null;
     }
 
@@ -1233,7 +1244,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
       return { lat, lon };
     }
 
-    this._error = localize(this.hass, 'component.radar-card.card.error.invalid_entity_coords', { entity: entityId });
+    if (reportError) {
+      this._error = localize(this.hass, 'component.radar-card.card.error.invalid_entity_coords', { entity: entityId });
+    }
     return null;
   }
 
