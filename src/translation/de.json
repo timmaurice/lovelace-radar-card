@@ -71,7 +71,7 @@
       "unavailable": "nicht verfügbar"
     },
     "a11y": {
-      "description": "Zeigt {count} Entitäten. Der Mittelpunkt ist Ihr Standort. Entitäten werden nach Entfernung und Richtung eingezeichnet.",
+      "description": "Zeigt {count} Entitäten. Der Mittelpunkt ist dein Standort. Entitäten werden nach Entfernung und Richtung eingezeichnet.",
       "toggle_pulse": "Pulsieren für {name} umschalten"
     },
     "marker_default_name": "Markierung {date} {time}",
