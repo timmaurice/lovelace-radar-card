@@ -1,10 +1,11 @@
 import { LitElement, html, css, TemplateResult, unsafeCSS, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor, RadarCardConfig, RadarCardEntityConfig, RadarMarker } from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { localize } from './localize';
 import { fireEvent } from './utils';
 import editorStyles from './styles/editor.styles.scss';
+import { EDITOR_ELEMENT_NAME } from './constants';
 
 // Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
 if (!window.customElements.get('hex-color-picker')) {
@@ -27,7 +28,6 @@ interface EntityPicker extends HTMLElement {
   index: number;
 }
 
-@customElement('radar-card-editor')
 export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: RadarCardConfig;
@@ -901,6 +901,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
   static styles = css`
     ${unsafeCSS(editorStyles)}
   `;
+}
+
+// Same reason as the card itself: a duplicate resource evaluates this module twice and an
+// unguarded define would throw.
+if (!customElements.get(EDITOR_ELEMENT_NAME)) {
+  customElements.define(EDITOR_ELEMENT_NAME, RadarCardEditor);
 }
 
 declare global {

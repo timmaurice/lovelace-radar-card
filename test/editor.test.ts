@@ -123,4 +123,19 @@ describe('RadarCardEditor', () => {
     expect(newConfig.legend_position).toBeUndefined();
     expect(newConfig.legend_show_distance).toBeUndefined();
   });
+
+  describe('Duplicate resource registration', () => {
+    it('should not throw when the editor module is evaluated a second time', async () => {
+      vi.resetModules();
+      await expect(import('../src/editor')).resolves.toBeDefined();
+    });
+
+    it('should keep the originally registered editor element after a second evaluation', async () => {
+      const first = window.customElements.get('radar-card-editor');
+      vi.resetModules();
+      await import('../src/editor');
+
+      expect(window.customElements.get('radar-card-editor')).toBe(first);
+    });
+  });
 });
