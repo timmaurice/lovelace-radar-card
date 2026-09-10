@@ -426,6 +426,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
     // `out-of-range` class marks it as "at least this far away" rather than
     // pretending it sits exactly on the outer ring.
     const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]).clamp(true);
+    // Zone geometry is an extent, not a position. `_calculateZones` keeps a zone
+    // whose near edge reaches inside the radar, so a zone centred beyond the
+    // maximum is normal - and clamping would saturate both its centre and its
+    // radius at the rim, drawing a circle that blankets the whole chart down to
+    // the centre. Zones therefore scale unclamped, in auto and fixed mode alike.
+    const zoneScale = rScale.copy().clamp(false);
     const svgRoot = select(radarContainer)
       .selectAll('svg')
       .data([null])
@@ -635,7 +641,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .transition()
         .duration(duration)
         .ease(easeCubicOut)
-        .attr('r', (d) => rScale(d.radius));
+        .attr('r', (d) => zoneScale(d.radius));
 
       zoneGroup
         .attr('transform', 'translate(0, 0)')
@@ -645,15 +651,15 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .attr(
           'transform',
           (d) =>
-            `translate(${rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180))}, ${Math.max(rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)), -1000)})`,
+            `translate(${zoneScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180))}, ${Math.max(zoneScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)), -1000)})`,
         );
     } else {
       zoneGroup.attr(
         'transform',
         (d) =>
-          `translate(${rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180))}, ${rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180))})`,
+          `translate(${zoneScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180))}, ${zoneScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180))})`,
       );
-      zoneGroup.select('.zone-circle').attr('r', (d) => rScale(d.radius));
+      zoneGroup.select('.zone-circle').attr('r', (d) => zoneScale(d.radius));
     }
 
     // Plot the pings for moving entities

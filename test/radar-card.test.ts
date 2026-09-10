@@ -1521,6 +1521,90 @@ describe('RadarCard', () => {
       expect(zoneOverlays?.length).toBe(0);
     });
 
+    /**
+     * A zone is kept when its near edge reaches inside the radar, so its centre
+     * may well sit outside it. Clamping the scale the way a point position is
+     * clamped saturated both the centre and the radius at the rim, which drew
+     * the zone from the rim down to the centre - a circle blanketing the whole
+     * radar, including the reader's own position.
+     */
+    describe('a zone centred beyond the maximum', () => {
+      const NORTH_2KM = 52.537994;
+      const NORTH_5KM = 52.564974;
+
+      beforeEach(() => {
+        // The only zone in play here is the distant one, so the assertions can
+        // read the single drawn overlay.
+        delete hass.states['zone.park'];
+        hass.states['device_tracker.tester'] = {
+          entity_id: 'device_tracker.tester',
+          state: 'not_home',
+          attributes: { latitude: NORTH_2KM, longitude: 13.404954, friendly_name: 'Tester' },
+        } as HassEntity;
+        // Centred 5 km north with a 4 km radius: 5 - 4 = 1 km reaches inside
+        // either radar below, so the zone is kept and must be drawn.
+        hass.states['zone.far_park'] = {
+          entity_id: 'zone.far_park',
+          state: 'zoning',
+          attributes: {
+            latitude: NORTH_5KM,
+            longitude: 13.404954,
+            friendly_name: 'Far Park',
+            radius: 4000,
+          },
+        } as HassEntity;
+      });
+
+      const drawnZone = (): { y: number; r: number } => {
+        const group = element.shadowRoot!.querySelector<SVGGElement>('g.zone-group')!;
+        const circle = group.querySelector<SVGCircleElement>('circle.zone-circle')!;
+        const match = group.getAttribute('transform')!.match(/translate\(([^,]+),\s*([^)]+)\)/)!;
+        return { y: parseFloat(match[2]), r: parseFloat(circle.getAttribute('r')!) };
+      };
+
+      it('should keep the centre and the radius unclamped in auto-scale mode', async () => {
+        element = document.createElement('radar-card') as RadarCard;
+        document.body.appendChild(element);
+        element.hass = hass;
+        element.setConfig({
+          ...config,
+          entities: ['device_tracker.tester'],
+          show_zones: true,
+          auto_radar_max_distance: true,
+        });
+        await element.updateComplete;
+        await vi.runAllTimersAsync();
+
+        // Auto maximum is the 2 km tracker, so 90 chart units are 2 km.
+        const { y, r } = drawnZone();
+        expect(y).toBeCloseTo(-225, 0);
+        expect(r).toBeCloseTo(180, 0);
+        // The bug: translate(0, -90) with r=90 put the inner edge at the centre.
+        expect(Math.abs(y) - r).toBeCloseTo(45, 0);
+      });
+
+      it('should keep the centre and the radius unclamped in fixed mode', async () => {
+        element = document.createElement('radar-card') as RadarCard;
+        document.body.appendChild(element);
+        element.hass = hass;
+        element.setConfig({
+          ...config,
+          entities: ['device_tracker.tester'],
+          show_zones: true,
+          auto_radar_max_distance: false,
+          radar_max_distance: 3,
+        });
+        await element.updateComplete;
+        await vi.runAllTimersAsync();
+
+        // 90 chart units are 3 km here, so the inner edge lands on the 1 km ring.
+        const { y, r } = drawnZone();
+        expect(y).toBeCloseTo(-150, 0);
+        expect(r).toBeCloseTo(120, 0);
+        expect(Math.abs(y) - r).toBeCloseTo(30, 0);
+      });
+    });
+
     it('should ignore home assistant zones natively when explicitly deactivated', async () => {
       // Inject device_tracker mock to prevent early return block
       hass.states['device_tracker.tester'] = {
