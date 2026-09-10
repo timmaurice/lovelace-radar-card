@@ -59,9 +59,17 @@
       "no_home_location": "L'emplacement du centre n'est pas défini dans Home Assistant et aucune coordonnée personnalisée n'est fournie.",
       "multiple_center_definitions": "Veuillez fournir soit une entité de zone, soit des coordonnées manuelles pour le centre, mais pas les deux.",
       "incomplete_center_coords": "Veuillez fournir à la fois la latitude et la longitude du centre.",
-      "invalid_entity_coords": "Radar-card: L'entité '{entity}' n'a pas d'attributs de latitude et de longitude valides."
+      "invalid_entity_coords": "Radar-card: L'entité '{entity}' n'a pas d'attributs de latitude et de longitude valides.",
+      "entity_not_found": "Radar-card: L'entité '{entity}' est introuvable."
     },
     "no_entities": "Aucune entité à afficher",
+    "beyond_range": "Au-delà de la portée du radar",
+    "skipped": {
+      "title": "Non affiché",
+      "not_found": "introuvable",
+      "no_location": "sans position",
+      "unavailable": "indisponible"
+    },
     "a11y": {
       "description": "Affiche {count} entités. Le centre est votre position. Les entités sont placées selon la distance et la direction.",
       "toggle_pulse": "Activer ou désactiver la pulsation pour {name}"

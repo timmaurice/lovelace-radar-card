@@ -147,6 +147,20 @@ ha-fab.add-marker-btn {
   }
 }
 
+.entity-group {
+  /* Clamped onto the rim because it is further away than the radar reaches.
+     Hollow, so it does not read as an entity sitting on the outer ring. */
+  &.out-of-range {
+    .entity-dot[d] {
+      stroke: inherit;
+    }
+
+    .entity-avatar {
+      opacity: 0.6;
+    }
+  }
+}
+
 .entity-dot,
 .entity-avatar {
   transform-box: fill-box;
@@ -255,6 +269,12 @@ ha-fab.add-marker-btn {
       background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
     }
 
+    .legend-beyond-range {
+      --mdc-icon-size: 14px;
+      color: var(--warning-color);
+      flex-shrink: 0;
+    }
+
     .legend-color {
       border-radius: 50%;
       flex-shrink: 0;
@@ -349,4 +369,29 @@ ha-dialog {
 .warning {
   --mdc-theme-primary: var(--error-color);
   margin: 0;
+}
+
+.skipped-entities {
+  color: var(--secondary-text-color);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 4px 8px;
+  padding: 0 16px 16px;
+
+  .skipped-title {
+    font-weight: 500;
+  }
+
+  .skipped-entity {
+    opacity: 0.7;
+  }
+
+  .skipped-reason {
+    font-style: italic;
+  }
+}
+
+.custom-tooltip .beyond-range {
+  color: var(--warning-color);
 }

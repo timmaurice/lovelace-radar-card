@@ -76,6 +76,15 @@ export interface RadarPoint {
 }
 export type { RadarMarker };
 
+/** Why an entity the config lists is not on the radar. */
+export type SkippedReason = 'not_found' | 'no_location' | 'unavailable';
+
+export interface SkippedEntity {
+  entity_id: string;
+  name: string;
+  reason: SkippedReason;
+}
+
 type LovelaceCardConstructor = {
   new (): LovelaceCard;
   getConfigElement(): Promise<LovelaceCardEditor>;
@@ -86,6 +95,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: RadarCardConfig;
   @state() private _points: RadarPoint[] = [];
+  @state() private _skipped: SkippedEntity[] = [];
   @state() private _markers: RadarMarker[] = [];
   @state() private _zones: RadarZone[] = [];
   @state() private _tooltip: { visible: boolean; content: TemplateResult | typeof nothing; x: number; y: number } = {
@@ -169,6 +179,13 @@ export class RadarCard extends LitElement implements LovelaceCard {
       <strong>${point.name || point.entity_id}</strong><br />
       ${localize(this.hass, 'component.radar-card.card.distance')}: ${distanceStr}<br />
       ${localize(this.hass, 'component.radar-card.card.azimuth')}: ${Math.round(point.azimuth)}°
+      ${
+        this._isBeyondRange(point)
+          ? html`<br /><span class="beyond-range"
+                >${localize(this.hass, 'component.radar-card.card.beyond_range')}</span
+              >`
+          : nothing
+      }
     `;
   }
 
@@ -177,8 +194,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const name = point.name || point.entity_id;
     const distanceLabel = localize(this.hass, 'component.radar-card.card.distance');
     const azimuthLabel = localize(this.hass, 'component.radar-card.card.azimuth');
+    const beyond = this._isBeyondRange(point)
+      ? ` ${localize(this.hass, 'component.radar-card.card.beyond_range')}.`
+      : '';
 
-    return `${name}. ${distanceLabel}: ${distanceStr}. ${azimuthLabel}: ${Math.round(point.azimuth)}°.`;
+    return `${name}. ${distanceLabel}: ${distanceStr}. ${azimuthLabel}: ${Math.round(point.azimuth)}°.${beyond}`;
   }
 
   private _moveTooltip(event: MouseEvent): void {
@@ -351,6 +371,15 @@ export class RadarCard extends LitElement implements LovelaceCard {
     return maxDistance > 0 ? maxDistance : MIN_RADAR_MAX_DISTANCE;
   }
 
+  /**
+   * Whether a point falls outside the radar's outer distance. Only a fixed
+   * `radar_max_distance` can put it there - the auto maximum is the furthest
+   * point itself - and such a point is drawn on the rim rather than off-canvas.
+   */
+  private _isBeyondRange(point: RadarPoint): boolean {
+    return point.distance > this._getMaxRadarDistance(this._points);
+  }
+
   private _renderRadarChart(points: RadarPoint[], animate = false) {
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
@@ -360,7 +389,12 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const duration = this._config.animation_duration ?? 750;
     const maxDistance = this._getMaxRadarDistance(points);
 
-    const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
+    // Clamped: without it a point beyond a fixed `radar_max_distance` was
+    // translated far outside the 220x220 viewBox, so it vanished from the chart
+    // while the legend still listed it. Clamping puts it on the rim, and the
+    // `out-of-range` class marks it as "at least this far away" rather than
+    // pretending it sits exactly on the outer ring.
+    const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]).clamp(true);
     const svgRoot = select(radarContainer)
       .selectAll('svg')
       .data([null])
@@ -660,9 +694,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
     // Set position and tooltip for all dots (new and updated)
     entityGroup //
       .attr('tabindex', 0)
-      .attr('class', (d) => `entity-group ${d.entity_id === this._pulsingEntityId ? 'pulsing' : ''}`)
+      .attr(
+        'class',
+        (d) =>
+          `entity-group ${d.entity_id === this._pulsingEntityId ? 'pulsing' : ''} ${
+            d.distance > maxDistance ? 'out-of-range' : ''
+          }`,
+      )
       .style('fill', (d) => d.color || this._config.entity_color || 'var(--info-color)')
-      .style('fill-opacity', 1)
+      // Hollow rather than solid, so a dot on the rim is readable as "further
+      // away than the radar reaches" instead of "exactly at the outer ring".
+      .style('fill-opacity', (d) => (d.distance > maxDistance ? 0 : 1))
+      .style('stroke', (d) =>
+        d.distance > maxDistance ? d.color || this._config.entity_color || 'var(--info-color)' : null,
+      )
+      .style('stroke-width', (d) => (d.distance > maxDistance ? 1.5 : null))
       .attr('d', (d) => (d.isMarker ? 'M0,-4L4,4H-4Z' : '')) // Use path for markers
       .style('cursor', 'pointer')
       .on('mouseover', (event, d) => {
@@ -776,17 +822,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const position = this._config.legend_position ?? 'bottom';
     const showDistance = this._config.legend_show_distance !== false;
     const distanceUnit = this.hass.config.unit_system.length || 'km';
+    const beyondRangeLabel = localize(this.hass, 'component.radar-card.card.beyond_range');
     const duration = this._config.animation_duration ?? 750;
     const style = animate ? `animation-duration: ${duration}ms; animation-delay: ${duration * 0.25}ms` : '';
 
     return html`
       <div class="legend ${position} ${animate ? 'fade-in' : ''}" style=${style}>
-        ${this._points.map(
-          (point) => html`
+        ${this._points.map((point) => {
+          const beyondRange = this._isBeyondRange(point);
+          return html`
             <div class="legend-item-wrapper">
               <button
                 type="button"
-                class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''}"
+                class="legend-item ${point.entity_id === this._pulsingEntityId ? 'active' : ''} ${
+                  beyondRange ? 'out-of-range' : ''
+                }"
                 aria-pressed="${point.entity_id === this._pulsingEntityId}"
                 aria-label=${localize(this.hass, 'component.radar-card.card.a11y.toggle_pulse', {
                   name: point.name ?? point.entity_id ?? '',
@@ -817,6 +867,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
                           >(${formatDistance(point.distance, distanceUnit, { locale: this._locale })})</span
                         >`
                       : nothing
+                  }${
+                    beyondRange
+                      ? html` <ha-icon
+                          class="legend-beyond-range"
+                          icon="mdi:alert-outline"
+                          title=${beyondRangeLabel}
+                        ></ha-icon>`
+                      : nothing
                   }
                 </div>
               </button>
@@ -836,6 +894,31 @@ export class RadarCard extends LitElement implements LovelaceCard {
                   : nothing
               }
             </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
+  /**
+   * The entities the config asks for but the radar cannot plot. They used to be
+   * dropped without a word, so a typo in an entity id or a tracker that went
+   * unavailable looked exactly like a card with fewer entities configured.
+   */
+  private _renderSkippedEntities(): TemplateResult | typeof nothing {
+    if (this._skipped.length === 0) return nothing;
+
+    return html`
+      <div class="skipped-entities">
+        <span class="skipped-title">${localize(this.hass, 'component.radar-card.card.skipped.title')}:</span>
+        ${this._skipped.map(
+          (skipped) => html`
+            <span class="skipped-entity" title=${skipped.entity_id}>
+              ${skipped.name}
+              <span class="skipped-reason"
+                >(${localize(this.hass, `component.radar-card.card.skipped.${skipped.reason}`)})</span
+              >
+            </span>
           `,
         )}
       </div>
@@ -930,13 +1013,28 @@ export class RadarCard extends LitElement implements LovelaceCard {
       typeof entity === 'string' ? { entity } : entity,
     );
 
+    const skipped: SkippedEntity[] = [];
+
     const entityPoints = normalizedEntities
       .map((entityConf): RadarPoint | null => {
         const entityId = entityConf.entity;
         const stateObj = this.hass.states[entityId];
-        if (!stateObj || stateObj.attributes.latitude == null || stateObj.attributes.longitude == null) {
+        const displayName = entityConf.name || (stateObj?.attributes.friendly_name as string | undefined) || entityId;
+        if (!stateObj) {
+          skipped.push({ entity_id: entityId, name: displayName, reason: 'not_found' });
           return null;
         }
+        // Stale coordinates outlive the state, so an unavailable tracker would
+        // otherwise be plotted at its last known position as if it were live.
+        if (stateObj.state === 'unavailable' || stateObj.state === 'unknown') {
+          skipped.push({ entity_id: entityId, name: displayName, reason: 'unavailable' });
+          return null;
+        }
+        if (stateObj.attributes.latitude == null || stateObj.attributes.longitude == null) {
+          skipped.push({ entity_id: entityId, name: displayName, reason: 'no_location' });
+          return null;
+        }
+        // Not skipped, hidden: the reader asked for it, so it needs no notice.
         if (this._config.hide_at_home && stateObj.state === 'home') {
           return null;
         }
@@ -999,6 +1097,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       : [];
 
     this._points = [...entityPoints, ...markerPoints];
+    this._skipped = skipped;
 
     if (this._config.show_zones) {
       const unit = this.hass.config.unit_system.length;
@@ -1042,7 +1141,13 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
   private _getCoordsFromState(entityId: string): { lat: number; lon: number } | null {
     const state = this.hass.states[entityId];
-    if (!state) return null;
+    if (!state) {
+      // Returning a bare null left the caller to report "No entities to show"
+      // for what is really a broken config, and the entity id never reached the
+      // reader.
+      this._error = localize(this.hass, 'component.radar-card.card.error.entity_not_found', { entity: entityId });
+      return null;
+    }
 
     const lat = parseFloat(state.attributes.latitude as string);
     const lon = parseFloat(state.attributes.longitude as string);
@@ -1074,6 +1179,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
           <div class="card-content">
             <div class="no-entities">${localize(this.hass, 'component.radar-card.card.no_entities')}</div>
           </div>
+          ${this._renderSkippedEntities()}
         </ha-card>
       `;
     }
@@ -1125,7 +1231,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
         <div class="card-content ${isBesideLegend ? `flex-layout legend-${legendPosition}` : ''}">
           ${radarContainer} ${isBesideLegend || isBottomLegend ? legendTemplate : nothing}
         </div>
-        ${this._renderMarkerDialog()}
+        ${this._renderSkippedEntities()} ${this._renderMarkerDialog()}
       </ha-card>
     `;
   }

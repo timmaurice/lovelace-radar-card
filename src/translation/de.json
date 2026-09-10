@@ -59,9 +59,17 @@
       "no_home_location": "Mittelpunkt ist in Home Assistant nicht festgelegt und es wurden keine benutzerdefinierten Koordinaten angegeben.",
       "multiple_center_definitions": "Bitte geben Sie entweder eine Zonen-Entität oder manuelle Koordinaten für den Mittelpunkt an, nicht beides.",
       "incomplete_center_coords": "Bitte geben Sie sowohl den Mittelpunkt-Breitengrad als auch den Mittelpunkt-Längengrad an.",
-      "invalid_entity_coords": "Radar-card: Entität '{entity}' hat keine gültigen Breitengrad- und Längengrad-Attribute."
+      "invalid_entity_coords": "Radar-card: Entität '{entity}' hat keine gültigen Breitengrad- und Längengrad-Attribute.",
+      "entity_not_found": "Radar-card: Entität '{entity}' wurde nicht gefunden."
     },
     "no_entities": "Keine Entitäten zum Anzeigen",
+    "beyond_range": "Außerhalb der Radar-Reichweite",
+    "skipped": {
+      "title": "Nicht angezeigt",
+      "not_found": "nicht gefunden",
+      "no_location": "kein Standort",
+      "unavailable": "nicht verfügbar"
+    },
     "a11y": {
       "description": "Zeigt {count} Entitäten. Der Mittelpunkt ist Ihr Standort. Entitäten werden nach Entfernung und Richtung eingezeichnet.",
       "toggle_pulse": "Pulsieren für {name} umschalten"
