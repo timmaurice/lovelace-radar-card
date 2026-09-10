@@ -124,6 +124,9 @@ describe('RadarCard', () => {
     };
   });
   afterEach(() => {
+    // Most tests leave their card attached. Detaching them here is what stops a
+    // half-run d3 transition from one test firing into the next one's timers.
+    for (const card of Array.from(document.body.querySelectorAll('radar-card'))) card.remove();
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorageMock.clear();
@@ -1328,6 +1331,59 @@ describe('RadarCard', () => {
       // toFixed writes a decimal point whatever the language, so this legend
       // used to read "1.34 km" on a German card.
       expect(element.shadowRoot?.querySelector('.legend-distance')?.textContent).toBe('(1,34 km)');
+    });
+  });
+
+  describe('Teardown', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: { latitude: 52.53, longitude: 13.41, friendly_name: 'Test Device' },
+      } as HassEntity;
+    });
+
+    it('should not wake up on a detached element after the animation test', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      element.editMode = true;
+      document.body.appendChild(element);
+      // jsdom has no SVG transform interpolation, so the chart itself is not
+      // what this test is about - the timeout the test animation leaves behind is.
+      vi.spyOn(
+        element as unknown as { _renderRadarChart: (points: RadarPoint[], animate?: boolean) => void },
+        '_renderRadarChart',
+      ).mockImplementation(() => {});
+      element.hass = hass;
+      element.setConfig({ ...config, animation_enabled: true, animation_duration: 500 });
+      await element.updateComplete;
+
+      window.dispatchEvent(new Event('radar-card-test-animation'));
+      await element.updateComplete;
+
+      element.remove();
+      const requestUpdate = vi.spyOn(element, 'requestUpdate');
+      // The pending timeout used to survive the teardown and set state on the
+      // detached card once its duration was up.
+      await vi.runAllTimersAsync();
+      expect(requestUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should interrupt the running entry animation when the card is detached', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, animation_enabled: true });
+      await element.updateComplete;
+
+      // d3 parks a schedule on every node it animates; an interrupted node loses it.
+      const svg = element.shadowRoot!.querySelector('.radar-chart svg')!;
+      const animating = (): Element[] => Array.from(svg.querySelectorAll('*')).filter((node) => '__transition' in node);
+      expect(animating().length).toBeGreaterThan(0);
+
+      element.remove();
+      expect(animating()).toHaveLength(0);
+      // And nothing is left to tick against the detached nodes.
+      await vi.runAllTimersAsync();
     });
   });
 

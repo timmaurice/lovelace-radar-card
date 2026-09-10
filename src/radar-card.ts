@@ -108,6 +108,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
   @state() private _error: string | null = null;
   @state() private _editingMarker: RadarMarker | null = null;
   private _hasAnimated = false;
+  private _testAnimationTimeout?: ReturnType<typeof setTimeout>;
   @state() private _isTestingAnimation = false;
 
   private _runTestAnimation = (): void => {
@@ -115,7 +116,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
       this._renderRadarChart(this._points, true);
       this._isTestingAnimation = true;
       const duration = this._config.animation_duration ?? 750;
-      setTimeout(() => {
+      // Kept so `disconnectedCallback` can cancel it: a card torn down mid-test
+      // otherwise wakes up as a detached element to clear a flag nobody reads.
+      clearTimeout(this._testAnimationTimeout);
+      this._testAnimationTimeout = setTimeout(() => {
+        this._testAnimationTimeout = undefined;
         this._isTestingAnimation = false;
       }, duration + 100);
     }
@@ -1247,6 +1252,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     window.removeEventListener('radar-card-test-animation', this._runTestAnimation);
     window.removeEventListener('radar-card-markers-updated', this._boundMarkersUpdatedHandler);
+    // A view switch detaches the card mid-animation. The pending timeout would
+    // still fire on the detached element, and the d3 transitions would keep
+    // ticking against nodes nobody looks at, so both are stopped here.
+    clearTimeout(this._testAnimationTimeout);
+    this._testAnimationTimeout = undefined;
+    this._isTestingAnimation = false;
+    const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
+    if (radarContainer) select(radarContainer).selectAll('*').interrupt();
     this._hasAnimated = false;
   }
 
