@@ -68,24 +68,48 @@ export function getAzimuth(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 /**
+ * Formats a number the way the reader's language writes it, so a German card
+ * shows "1,30 km" rather than the "1.30 km" `toFixed` hands out regardless of
+ * locale. The fallback is English rather than the runtime default: the card
+ * always knows Home Assistant's language, and an unset locale must not make the
+ * output depend on the machine the browser happens to run on.
+ */
+function formatNumber(value: number, fractionDigits: number, locale?: string): string {
+  return new Intl.NumberFormat(locale || 'en', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
+/**
  * Formats a distance value into a string with appropriate units.
  * Converts to meters or feet for distances less than 1 km/mi.
  * @param distance The distance value.
  * @param unit The unit of measurement ('km' or 'mi').
- * @param options Formatting options.
+ * @param options Formatting options, including the locale to format the number in.
  * @returns The formatted distance string.
  */
-export function formatDistance(distance: number, unit: string, options?: { removeIntegerDecimals?: boolean }): string {
-  if (unit === 'km' && distance < 1) {
-    return `${Math.round(distance * 1000)} m`;
+export function formatDistance(
+  distance: number,
+  unit: string,
+  options?: { removeIntegerDecimals?: boolean; locale?: string },
+): string {
+  const locale = options?.locale;
+  // Decide on the rounded value, not the raw one. A nominal 1 km comes out of
+  // the haversine as 999.998 m, which is still below 1 - so the small-unit
+  // branch used to win and print "1000 m" where the reader expects "1.00 km".
+  if (unit === 'km') {
+    const metres = Math.round(distance * 1000);
+    if (metres < 1000) return `${formatNumber(metres, 0, locale)} m`;
   }
-  if (unit === 'mi' && distance < 1) {
-    return `${Math.round(distance * 5280)} ft`;
+  if (unit === 'mi') {
+    const feet = Math.round(distance * 5280);
+    if (feet < 5280) return `${formatNumber(feet, 0, locale)} ft`;
   }
 
-  const formatted = distance.toFixed(2);
-  if (options?.removeIntegerDecimals && formatted.endsWith('.00')) {
-    return `${distance.toFixed(0)} ${unit}`;
+  const rounded = Math.round(distance * 100) / 100;
+  if (options?.removeIntegerDecimals && Number.isInteger(rounded)) {
+    return `${formatNumber(rounded, 0, locale)} ${unit}`;
   }
-  return `${formatted} ${unit}`;
+  return `${formatNumber(rounded, 2, locale)} ${unit}`;
 }

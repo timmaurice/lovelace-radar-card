@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../src/radar-card';
+import { RadarCard as RadarCardClass } from '../src/radar-card';
 import type { RadarCard, RadarMarker, RadarPoint } from '../src/radar-card';
 import { HaDialog, HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
@@ -7,7 +7,19 @@ import { handleAction } from 'custom-card-helpers';
 
 // Mock the localize function
 vi.mock('../src/localize', () => ({
-  localize: (hass: HomeAssistant, key: string): string => {
+  localize: (hass: HomeAssistant, key: string, placeholders: Record<string, string | number> = {}): string => {
+    if (key === 'component.radar-card.card.error.entity_not_found') {
+      return `Entity '${placeholders.entity}' was not found.`;
+    }
+    if (key === 'component.radar-card.card.a11y.toggle_pulse') {
+      return `Toggle pulse for ${placeholders.name}`;
+    }
+    if (key === 'component.radar-card.card.a11y.description') {
+      return `Showing ${placeholders.count} entities.`;
+    }
+    if (key === 'component.radar-card.card.beyond_range') {
+      return 'Beyond range';
+    }
     if (key === 'component.radar-card.card.no_entities') {
       return 'No entities to show';
     }
@@ -112,6 +124,9 @@ describe('RadarCard', () => {
     };
   });
   afterEach(() => {
+    // Most tests leave their card attached. Detaching them here is what stops a
+    // half-run d3 transition from one test firing into the next one's timers.
+    for (const card of Array.from(document.body.querySelectorAll('radar-card'))) card.remove();
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorageMock.clear();
@@ -539,6 +554,125 @@ describe('RadarCard', () => {
       // Far dot should be at the edge (radius 90), close dot should be near the center.
       expect(Math.max(...radii)).toBeCloseTo(90, 0);
       expect(Math.min(...radii)).toBeLessThan(10);
+
+      // The outermost ring is the chart's edge, so the radar fills its box.
+      // d3's round ticks stopped at the last step inside the domain, which left
+      // a fifth of the chart empty whenever the furthest entity sat just under a
+      // round number - and the haversine puts a nominal kilometre at 999.998 m.
+      const ringRadii = Array.from(element.shadowRoot!.querySelectorAll('circle.grid-circle')).map((circle) =>
+        parseFloat(circle.getAttribute('r') ?? '0'),
+      );
+      expect(ringRadii).toHaveLength(4);
+      expect(Math.max(...ringRadii)).toBeCloseTo(90, 0);
+      const gaps = ringRadii
+        .slice()
+        .sort((a, b) => a - b)
+        .map((radius, index, all) => radius - (index === 0 ? 0 : all[index - 1]));
+      for (const gap of gaps) expect(gap).toBeCloseTo(90 / 4, 0);
+    });
+
+    it('should still draw grid rings when the most distant entity is at distance 0', async () => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'home',
+        // Exactly on the configured home coordinates, so the distance is 0.
+        attributes: { latitude: 52.520008, longitude: 13.404954, friendly_name: 'Test Device' },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const gridCircles = element.shadowRoot?.querySelectorAll<SVGCircleElement>('.grid-circle');
+      expect(gridCircles?.length).toBeGreaterThan(0);
+      const radii = Array.from(gridCircles!).map((c) => parseFloat(c.getAttribute('r') || '0'));
+      expect(Math.min(...radii)).toBeGreaterThan(0);
+      expect(radii.every((r) => Number.isFinite(r))).toBe(true);
+    });
+
+    it('should place an entity at distance 0 in the center, not at half the radius', async () => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'home',
+        attributes: { latitude: 52.520008, longitude: 13.404954, friendly_name: 'Test Device' },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      const match = entityGroup?.getAttribute('transform')?.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      expect(match).not.toBeNull();
+      const cx = parseFloat(match![1]);
+      const cy = parseFloat(match![2]);
+      expect(Math.sqrt(cx * cx + cy * cy)).toBeCloseTo(0, 5);
+    });
+
+    it('should scale to its own data when every entity is only tens of metres away', async () => {
+      // ~20 m and ~50 m north of the configured home coordinates.
+      hass.states['device_tracker.test_device_near'] = {
+        entity_id: 'device_tracker.test_device_near',
+        state: 'home',
+        attributes: { latitude: 52.520188, longitude: 13.404954, friendly_name: 'Near Device' },
+      } as HassEntity;
+      hass.states['device_tracker.test_device_edge'] = {
+        entity_id: 'device_tracker.test_device_edge',
+        state: 'home',
+        attributes: { latitude: 52.520458, longitude: 13.404954, friendly_name: 'Edge Device' },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.test_device_near', 'device_tracker.test_device_edge'],
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityGroups = element.shadowRoot?.querySelectorAll<SVGGElement>('g.entity-group');
+      const radii = Array.from(entityGroups!).map((group) => {
+        const match = group.getAttribute('transform')?.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (!match) return 0;
+        const cx = parseFloat(match[1]);
+        const cy = parseFloat(match[2]);
+        return Math.sqrt(cx * cx + cy * cy);
+      });
+
+      // The furthest entity defines the outer edge of the chart (radius 90), not a fixed 0.1
+      // floor, which would bunch both dots into the inner half.
+      expect(Math.max(...radii)).toBeCloseTo(90, 0);
+
+      // ...and the rings are labelled against that same ~50 m span, not against 0.1 km.
+      const gridLabels = element.shadowRoot?.querySelectorAll<SVGTextElement>('.grid-label');
+      const lastLabel = gridLabels?.[gridLabels!.length - 1]?.textContent ?? '';
+      const [outerValue, outerUnit] = lastLabel.trim().split(' ');
+      const outerMetres = outerUnit === 'km' ? parseFloat(outerValue) * 1000 : parseFloat(outerValue);
+      expect(outerMetres).toBeGreaterThan(0);
+      expect(outerMetres).toBeLessThan(60);
+    });
+  });
+
+  describe('Duplicate resource registration', () => {
+    it('should not throw when the bundle is evaluated a second time', async () => {
+      vi.resetModules();
+      await expect(import('../src/radar-card')).resolves.toBeDefined();
+    });
+
+    it('should register the card in customCards only once when loaded twice', async () => {
+      vi.resetModules();
+      await import('../src/radar-card');
+
+      const entries = (window.customCards ?? []).filter((card) => card.type === 'radar-card');
+      expect(entries).toHaveLength(1);
     });
   });
 
@@ -675,7 +809,7 @@ describe('RadarCard', () => {
       renderSpy.mockClear();
 
       window.dispatchEvent(new CustomEvent('radar-card-test-animation'));
-      expect(renderSpy).toHaveBeenCalledWith(expect.anything(), true);
+      expect(renderSpy).toHaveBeenCalledWith(true);
     });
   });
   describe('Zone Entity Center', () => {
@@ -806,7 +940,33 @@ describe('RadarCard', () => {
 
       const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
       expect(dialog).not.toBeNull();
-      expect(dialog?.heading).toContain('Marker');
+      // The default name comes from the translations now, not from a hard-coded
+      // English string, so the mock's key stand-in is what lands in the heading.
+      expect(dialog?.heading).toContain('marker_default_name');
+    });
+
+    it('should not leave an error banner behind when the gesture finds no centre', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      // The centre entity goes away between renders. Only `willUpdate` clears
+      // `_error`, and a click alone does not re-run it, so an error raised from
+      // the gesture would replace the whole card with a banner nothing takes
+      // down again.
+      delete hass.states['device_tracker.center_device'];
+
+      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
+      fab?.click();
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      expect(element.shadowRoot?.querySelector('.card-content.warning')).toBeNull();
+      // No centre, so no marker dialog either - it just does nothing.
+      expect(element.shadowRoot?.querySelector('ha-dialog')).toBeNull();
     });
 
     it('should add a marker when dialog is saved', async () => {
@@ -969,6 +1129,440 @@ describe('RadarCard', () => {
     });
   });
 
+  describe('Entities beyond a fixed maximum distance', () => {
+    const config130km = (): RadarCardConfig => ({
+      ...config,
+      entities: ['device_tracker.near', 'device_tracker.far'],
+      auto_radar_max_distance: false,
+      radar_max_distance: 1,
+    });
+
+    beforeEach(() => {
+      hass.states['device_tracker.near'] = {
+        entity_id: 'device_tracker.near',
+        state: 'not_home',
+        // Roughly half a kilometre north, comfortably inside the 1 km radar.
+        attributes: { latitude: 52.524506, longitude: 13.404954, friendly_name: 'Near Device' },
+      } as HassEntity;
+      hass.states['device_tracker.far'] = {
+        entity_id: 'device_tracker.far',
+        state: 'not_home',
+        // Over a hundred kilometres away - far outside a 1 km radar.
+        attributes: { latitude: 53.6, longitude: 13.404954, friendly_name: 'Far Device' },
+      } as HassEntity;
+    });
+
+    const radiusOf = (group: SVGGElement): number => {
+      const match = group.getAttribute('transform')?.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      if (!match) return 0;
+      return Math.hypot(parseFloat(match[1]), parseFloat(match[2]));
+    };
+
+    it('should clamp an entity beyond the maximum onto the rim instead of off-canvas', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config130km());
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const groups = Array.from(element.shadowRoot!.querySelectorAll<SVGGElement>('g.entity-group'));
+      expect(groups).toHaveLength(2);
+      const far = groups.find((group) => group.querySelector('title')?.textContent?.startsWith('Far Device'))!;
+      const near = groups.find((group) => group.querySelector('title')?.textContent?.startsWith('Near Device'))!;
+
+      // The bug: translate(5970, -10049) on a 220x220 viewBox - drawn, but
+      // nowhere a reader could see it.
+      expect(radiusOf(far)).toBeCloseTo(90, 0);
+      expect(radiusOf(near)).toBeCloseTo(45, 0);
+    });
+
+    it('should mark the clamped entity as out of range rather than pass it off as on the rim', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config130km());
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const groups = Array.from(element.shadowRoot!.querySelectorAll<SVGGElement>('g.entity-group'));
+      const far = groups.find((group) => group.querySelector('title')?.textContent?.startsWith('Far Device'))!;
+      const near = groups.find((group) => group.querySelector('title')?.textContent?.startsWith('Near Device'))!;
+
+      expect(far.classList.contains('out-of-range')).toBe(true);
+      expect(near.classList.contains('out-of-range')).toBe(false);
+      // Hollow, so it does not read as an entity sitting exactly on the ring.
+      expect(far.style.fillOpacity).toBe('0');
+      expect(near.style.fillOpacity).toBe('1');
+      expect(far.querySelector('title')?.textContent).toContain('Beyond range');
+    });
+
+    it('should say in the legend that an entity is beyond the radar', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config130km());
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const items = Array.from(element.shadowRoot!.querySelectorAll('.legend-item'));
+      const far = items.find((item) => item.textContent?.includes('Far Device'))!;
+      const near = items.find((item) => item.textContent?.includes('Near Device'))!;
+      expect(far.classList.contains('out-of-range')).toBe(true);
+      expect(near.classList.contains('out-of-range')).toBe(false);
+      expect(far.querySelector('ha-icon.legend-beyond-range')?.getAttribute('title')).toBe('Beyond range');
+      expect(near.querySelector('ha-icon.legend-beyond-range')).toBeNull();
+    });
+
+    /**
+     * Beyond the maximum every distance collapses onto the rim, so trackers on
+     * one bearing are drawn at pixel-identical positions and only the topmost
+     * group can receive a `mouseover`. Keyboard users reach each of them
+     * through its own `tabindex`; the mouse tooltip has to name the whole pile.
+     */
+    it('should name every entity piled up on the same point of the rim', async () => {
+      const northAt = { 10: 52.60994, 50: 52.969669, 200: 54.318651 };
+      for (const [label, latitude] of Object.entries(northAt)) {
+        hass.states[`device_tracker.pile_${label}`] = {
+          entity_id: `device_tracker.pile_${label}`,
+          state: 'not_home',
+          attributes: { latitude, longitude: 13.404954, friendly_name: `Pile ${label}` },
+        } as HassEntity;
+      }
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.pile_10', 'device_tracker.pile_50', 'device_tracker.pile_200'],
+        auto_radar_max_distance: false,
+        radar_max_distance: 1,
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const groups = Array.from(element.shadowRoot!.querySelectorAll<SVGGElement>('g.entity-group'));
+      expect(groups).toHaveLength(3);
+      // All three really are on the same point - that is the premise.
+      const positions = new Set(groups.map((group) => group.getAttribute('transform')));
+      expect(positions.size).toBe(1);
+
+      // Only the last group drawn can be hovered, so that one must speak for all.
+      groups[groups.length - 1].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      await element.updateComplete;
+
+      const tooltip = element.shadowRoot!.querySelector('.custom-tooltip')!;
+      expect(tooltip.classList.contains('visible')).toBe(true);
+      for (const label of Object.keys(northAt)) expect(tooltip.textContent).toContain(`Pile ${label}`);
+      // Nearest first, so the ordering the clamp destroyed is readable again.
+      const order = Array.from(tooltip.querySelectorAll('.tooltip-stack-item strong')).map((el) => el.textContent);
+      expect(order).toEqual(['Pile 10', 'Pile 50', 'Pile 200']);
+    });
+
+    it('should keep the tooltip to one entity when nothing shares its point', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config130km());
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const groups = Array.from(element.shadowRoot!.querySelectorAll<SVGGElement>('g.entity-group'));
+      const far = groups.find((group) => group.querySelector('title')?.textContent?.startsWith('Far Device'))!;
+      far.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      await element.updateComplete;
+
+      const tooltip = element.shadowRoot!.querySelector('.custom-tooltip')!;
+      expect(tooltip.textContent).toContain('Far Device');
+      expect(tooltip.textContent).not.toContain('Near Device');
+      expect(tooltip.querySelectorAll('.tooltip-stack-item')).toHaveLength(0);
+    });
+
+    it('should leave an auto-scaled radar without any out-of-range entity', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.near', 'device_tracker.far'] });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      expect(element.shadowRoot!.querySelectorAll('g.entity-group.out-of-range')).toHaveLength(0);
+    });
+  });
+
+  describe('Entities the radar cannot plot', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.ok'] = {
+        entity_id: 'device_tracker.ok',
+        state: 'not_home',
+        attributes: { latitude: 52.53, longitude: 13.41, friendly_name: 'Fine Device' },
+      } as HassEntity;
+      hass.states['device_tracker.nocoords'] = {
+        entity_id: 'device_tracker.nocoords',
+        state: 'not_home',
+        attributes: { friendly_name: 'No Coords' },
+      } as HassEntity;
+      hass.states['device_tracker.unavail'] = {
+        entity_id: 'device_tracker.unavail',
+        state: 'unavailable',
+        // Stale coordinates outlive the state - it must not be plotted as live.
+        attributes: { latitude: 52.6, longitude: 13.5, friendly_name: 'Gone Device' },
+      } as HassEntity;
+    });
+
+    const setup = async (entities: string[], extra: Partial<RadarCardConfig> = {}): Promise<void> => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities, ...extra });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+    };
+
+    it('should list a missing, a coordinate-less and an unavailable entity with a reason', async () => {
+      await setup([
+        'device_tracker.ok',
+        'device_tracker.does_not_exist',
+        'device_tracker.nocoords',
+        'device_tracker.unavail',
+      ]);
+
+      // Only the healthy one is on the radar, and the other three are named.
+      expect(element.shadowRoot!.querySelectorAll('g.entity-group')).toHaveLength(1);
+      const skipped = Array.from(element.shadowRoot!.querySelectorAll('.skipped-entity')).map((entry) =>
+        entry.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+      expect(skipped).toHaveLength(3);
+      expect(skipped[0]).toBe('device_tracker.does_not_exist (not_found)');
+      expect(skipped[1]).toBe('No Coords (no_location)');
+      expect(skipped[2]).toBe('Gone Device (unavailable)');
+    });
+
+    it('should not plot an unavailable entity from its stale coordinates', async () => {
+      await setup(['device_tracker.unavail']);
+
+      expect(element.shadowRoot!.querySelectorAll('g.entity-group')).toHaveLength(0);
+      expect(element.shadowRoot!.querySelector('.no-entities')).not.toBeNull();
+      // Even with nothing to draw, the reason has to reach the reader.
+      expect(element.shadowRoot!.querySelectorAll('.skipped-entity')).toHaveLength(1);
+    });
+
+    it('should say nothing about an entity hide_at_home deliberately hides', async () => {
+      hass.states['device_tracker.at_home'] = {
+        entity_id: 'device_tracker.at_home',
+        state: 'home',
+        attributes: { latitude: 52.520008, longitude: 13.404954, friendly_name: 'Home Device' },
+      } as HassEntity;
+      await setup(['device_tracker.ok', 'device_tracker.at_home'], { hide_at_home: true });
+
+      expect(element.shadowRoot!.querySelectorAll('.skipped-entity')).toHaveLength(0);
+    });
+
+    it('should keep quiet when every entity is fine', async () => {
+      await setup(['device_tracker.ok']);
+
+      expect(element.shadowRoot!.querySelector('.skipped-entities')).toBeNull();
+    });
+
+    it('should name a center entity that does not exist instead of claiming there is nothing to show', async () => {
+      await setup(['device_tracker.ok'], { center_entity: 'device_tracker.nope' });
+
+      const error = element.shadowRoot?.querySelector('.warning');
+      expect(error).not.toBeNull();
+      expect(error?.textContent).toContain("Entity 'device_tracker.nope' was not found.");
+      expect(element.shadowRoot?.querySelector('.no-entities')).toBeNull();
+    });
+
+    it('should name a missing center zone the same way', async () => {
+      await setup(['device_tracker.ok'], { location_zone_entity: 'zone.nope' });
+
+      const error = element.shadowRoot?.querySelector('.warning');
+      expect(error?.textContent).toContain("Entity 'zone.nope' was not found.");
+    });
+  });
+
+  describe('Lovelace API surface', () => {
+    it('should pick a locatable entity for the card picker preview', () => {
+      hass.states['sensor.temperature'] = {
+        entity_id: 'sensor.temperature',
+        state: '21',
+        attributes: {},
+      } as HassEntity;
+      hass.states['device_tracker.no_gps'] = {
+        entity_id: 'device_tracker.no_gps',
+        state: 'home',
+        attributes: {},
+      } as HassEntity;
+      hass.states['person.tim'] = {
+        entity_id: 'person.tim',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      // The placeholder id nobody owns rendered the preview as "No entities to show".
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['person.tim'] });
+    });
+
+    it('should skip an entity the card refuses to plot when picking the preview', () => {
+      // Coordinates outlive the state, but `_calculatePoints` will not plot an
+      // unavailable or unknown tracker from them - so picking one puts the
+      // preview right back to "No entities to show".
+      hass.states['device_tracker.gone'] = {
+        entity_id: 'device_tracker.gone',
+        state: 'unavailable',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+      hass.states['device_tracker.hazy'] = {
+        entity_id: 'device_tracker.hazy',
+        state: 'unknown',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['device_tracker.your_device'] });
+
+      hass.states['person.tim'] = {
+        entity_id: 'person.tim',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['person.tim'] });
+    });
+
+    it('should fall back to the placeholder when nothing can be located', () => {
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['device_tracker.your_device'] });
+      expect(RadarCardClass.getStubConfig()).toEqual({ entities: ['device_tracker.your_device'] });
+    });
+
+    it('should offer grid options so a sections dashboard can size the card', () => {
+      element = document.createElement('radar-card') as RadarCard;
+      expect(element.getGridOptions()).toEqual({ columns: 6, rows: 'auto', min_columns: 4, min_rows: 4 });
+    });
+
+    it('should grow its card size with a legend below the chart', async () => {
+      for (const index of [0, 1, 2, 3]) {
+        hass.states[`device_tracker.size_${index}`] = {
+          entity_id: `device_tracker.size_${index}`,
+          state: 'not_home',
+          attributes: { latitude: 52.53 + index / 100, longitude: 13.41, friendly_name: `Size ${index}` },
+        } as HassEntity;
+      }
+      const entities = [0, 1, 2, 3].map((index) => `device_tracker.size_${index}`);
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      // Four entities wrap onto two legend rows below the 3-row chart.
+      expect(element.getCardSize()).toBe(5);
+
+      element.setConfig({ ...config, entities, show_legend: false });
+      await element.updateComplete;
+      expect(element.getCardSize()).toBe(3);
+
+      element.setConfig({ ...config, entities, legend_position: 'right' });
+      await element.updateComplete;
+      expect(element.getCardSize()).toBe(3);
+    });
+  });
+
+  describe('Localized texts', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: { latitude: 52.53, longitude: 13.41, friendly_name: 'Test Device' },
+      } as HassEntity;
+    });
+
+    it('should localize the chart description and the legend toggle instead of hard-coding English', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      expect(element.shadowRoot?.querySelector('desc')?.textContent).toBe('Showing 1 entities.');
+      expect(element.shadowRoot?.querySelector('.legend-item')?.getAttribute('aria-label')).toBe(
+        'Toggle pulse for Test Device',
+      );
+    });
+
+    it("should write the distance the way the reader's language writes it", async () => {
+      hass.language = 'de';
+      hass.locale = { ...hass.locale, language: 'de' };
+      hass.states['device_tracker.test_device'].attributes.latitude = 52.5317;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      // toFixed writes a decimal point whatever the language, so this legend
+      // used to read "1.34 km" on a German card.
+      expect(element.shadowRoot?.querySelector('.legend-distance')?.textContent).toBe('(1,34 km)');
+    });
+  });
+
+  describe('Teardown', () => {
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = {
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: { latitude: 52.53, longitude: 13.41, friendly_name: 'Test Device' },
+      } as HassEntity;
+    });
+
+    it('should not wake up on a detached element after the animation test', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      element.editMode = true;
+      document.body.appendChild(element);
+      // jsdom has no SVG transform interpolation, so the chart itself is not
+      // what this test is about - the timeout the test animation leaves behind is.
+      vi.spyOn(
+        element as unknown as { _renderRadarChart: (points: RadarPoint[], animate?: boolean) => void },
+        '_renderRadarChart',
+      ).mockImplementation(() => {});
+      element.hass = hass;
+      element.setConfig({ ...config, animation_enabled: true, animation_duration: 500 });
+      await element.updateComplete;
+
+      window.dispatchEvent(new Event('radar-card-test-animation'));
+      await element.updateComplete;
+
+      element.remove();
+      const requestUpdate = vi.spyOn(element, 'requestUpdate');
+      // The pending timeout used to survive the teardown and set state on the
+      // detached card once its duration was up.
+      await vi.runAllTimersAsync();
+      expect(requestUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should interrupt the running entry animation when the card is detached', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, animation_enabled: true });
+      await element.updateComplete;
+
+      // d3 parks a schedule on every node it animates; an interrupted node loses it.
+      const svg = element.shadowRoot!.querySelector('.radar-chart svg')!;
+      const animating = (): Element[] => Array.from(svg.querySelectorAll('*')).filter((node) => '__transition' in node);
+      expect(animating().length).toBeGreaterThan(0);
+
+      element.remove();
+      expect(animating()).toHaveLength(0);
+      // And nothing is left to tick against the detached nodes.
+      await vi.runAllTimersAsync();
+    });
+  });
+
   describe('Zone Entity Overlay Configuration', () => {
     beforeEach(() => {
       // Mocking zone object
@@ -996,7 +1590,13 @@ describe('RadarCard', () => {
       document.body.appendChild(element);
       element.hass = hass;
       // Expanding boundary bounds massively to guarantee the mock park zone natively penetrates constraints
-      element.setConfig({ ...config, entities: ['device_tracker.tester'], show_zones: true, radar_max_distance: 1000 });
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.tester'],
+        show_zones: true,
+        auto_radar_max_distance: false,
+        radar_max_distance: 1000,
+      });
       await element.updateComplete;
       await vi.runAllTimersAsync();
 
@@ -1006,6 +1606,117 @@ describe('RadarCard', () => {
       // Asserts scale maps radius dynamically
       const radius = parseFloat(zoneOverlays?.[0].getAttribute('r') || '0');
       expect(radius).toBeGreaterThan(0);
+    });
+
+    it('should filter zones against the auto-scaled radius, not a stale radar_max_distance', async () => {
+      // Auto scaling is on (the default), so the chart scales to the furthest entity (~0.3 km here)
+      // and the leftover radar_max_distance must be ignored. The park zone sits ~2 km out, well
+      // outside the auto-scaled radar, so it must not be drawn.
+      hass.states['device_tracker.tester'] = {
+        entity_id: 'device_tracker.tester',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: ['device_tracker.tester'],
+        show_zones: true,
+        auto_radar_max_distance: true,
+        radar_max_distance: 5,
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const zoneOverlays = element.shadowRoot?.querySelectorAll<SVGCircleElement>('circle.zone-circle');
+      expect(zoneOverlays?.length).toBe(0);
+    });
+
+    /**
+     * A zone is kept when its near edge reaches inside the radar, so its centre
+     * may well sit outside it. Clamping the scale the way a point position is
+     * clamped saturated both the centre and the radius at the rim, which drew
+     * the zone from the rim down to the centre - a circle blanketing the whole
+     * radar, including the reader's own position.
+     */
+    describe('a zone centred beyond the maximum', () => {
+      const NORTH_2KM = 52.537994;
+      const NORTH_5KM = 52.564974;
+
+      beforeEach(() => {
+        // The only zone in play here is the distant one, so the assertions can
+        // read the single drawn overlay.
+        delete hass.states['zone.park'];
+        hass.states['device_tracker.tester'] = {
+          entity_id: 'device_tracker.tester',
+          state: 'not_home',
+          attributes: { latitude: NORTH_2KM, longitude: 13.404954, friendly_name: 'Tester' },
+        } as HassEntity;
+        // Centred 5 km north with a 4 km radius: 5 - 4 = 1 km reaches inside
+        // either radar below, so the zone is kept and must be drawn.
+        hass.states['zone.far_park'] = {
+          entity_id: 'zone.far_park',
+          state: 'zoning',
+          attributes: {
+            latitude: NORTH_5KM,
+            longitude: 13.404954,
+            friendly_name: 'Far Park',
+            radius: 4000,
+          },
+        } as HassEntity;
+      });
+
+      const drawnZone = (): { y: number; r: number } => {
+        const group = element.shadowRoot!.querySelector<SVGGElement>('g.zone-group')!;
+        const circle = group.querySelector<SVGCircleElement>('circle.zone-circle')!;
+        const match = group.getAttribute('transform')!.match(/translate\(([^,]+),\s*([^)]+)\)/)!;
+        return { y: parseFloat(match[2]), r: parseFloat(circle.getAttribute('r')!) };
+      };
+
+      it('should keep the centre and the radius unclamped in auto-scale mode', async () => {
+        element = document.createElement('radar-card') as RadarCard;
+        document.body.appendChild(element);
+        element.hass = hass;
+        element.setConfig({
+          ...config,
+          entities: ['device_tracker.tester'],
+          show_zones: true,
+          auto_radar_max_distance: true,
+        });
+        await element.updateComplete;
+        await vi.runAllTimersAsync();
+
+        // Auto maximum is the 2 km tracker, so 90 chart units are 2 km.
+        const { y, r } = drawnZone();
+        expect(y).toBeCloseTo(-225, 0);
+        expect(r).toBeCloseTo(180, 0);
+        // The bug: translate(0, -90) with r=90 put the inner edge at the centre.
+        expect(Math.abs(y) - r).toBeCloseTo(45, 0);
+      });
+
+      it('should keep the centre and the radius unclamped in fixed mode', async () => {
+        element = document.createElement('radar-card') as RadarCard;
+        document.body.appendChild(element);
+        element.hass = hass;
+        element.setConfig({
+          ...config,
+          entities: ['device_tracker.tester'],
+          show_zones: true,
+          auto_radar_max_distance: false,
+          radar_max_distance: 3,
+        });
+        await element.updateComplete;
+        await vi.runAllTimersAsync();
+
+        // 90 chart units are 3 km here, so the inner edge lands on the 1 km ring.
+        const { y, r } = drawnZone();
+        expect(y).toBeCloseTo(-150, 0);
+        expect(r).toBeCloseTo(120, 0);
+        expect(Math.abs(y) - r).toBeCloseTo(30, 0);
+      });
     });
 
     it('should ignore home assistant zones natively when explicitly deactivated', async () => {

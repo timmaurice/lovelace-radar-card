@@ -59,16 +59,30 @@
       "no_home_location": "Środek lokalizacji nie został ustawiony w Home Assistancie i brak jest współrzędnych użytkownika.",
       "multiple_center_definitions": "Wskaż encję strefy albo podaj współrzędne środka. Wybierz tylko jedną z tych możliwości.",
       "incomplete_center_coords": "Podaj współrzędne długości i szerokości geograficznej środka.",
-      "invalid_entity_coords": "Radar-card: Encja '{entity}' nie posiada poprawnych atrybutów szerokości i długości geograficznej."
+      "invalid_entity_coords": "Radar-card: Encja '{entity}' nie posiada poprawnych atrybutów szerokości i długości geograficznej.",
+      "entity_not_found": "Radar-card: Nie znaleziono encji '{entity}'."
     },
     "no_entities": "Brak encji do wyświetlenia",
+    "beyond_range": "Poza zasięgiem radaru",
+    "skipped": {
+      "title": "Nie pokazano",
+      "not_found": "nie znaleziono",
+      "no_location": "brak lokalizacji",
+      "unavailable": "niedostępna"
+    },
+    "a11y": {
+      "description": "Pokazuje {count} encji. Środek to Twoja lokalizacja. Encje są nanoszone według odległości i kierunku.",
+      "toggle_pulse": "Przełącz pulsowanie dla {name}"
+    },
+    "marker_default_name": "Marker {date} {time}",
     "dialog": {
       "name": "Nazwa",
       "color": "Kolor",
       "cancel": "Anuluj",
       "delete": "Skasuj",
       "save": "Zapisz",
-      "add_marker_button": "Dodaj marker w punkcie centralnym (bieżąca lokalizacja)"
+      "add_marker_button": "Dodaj marker w punkcie centralnym (bieżąca lokalizacja)",
+      "edit_marker": "Edytuj marker"
     },
     "directions": {
       "N": "N",

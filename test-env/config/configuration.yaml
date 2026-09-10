@@ -9,8 +9,8 @@ lovelace:
     lovelace:
       mode: yaml
       filename: ui-lovelace.yaml
-      title: Overview
-      icon: mdi:view-dashboard
+      title: Radar
+      icon: mdi:radar
       show_in_sidebar: true
 
 template:

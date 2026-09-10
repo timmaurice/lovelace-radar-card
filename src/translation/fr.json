@@ -8,7 +8,10 @@
     "hide_at_home": "Masquer les entités à domicile",
     "center_coords_override": "Remplacer le centre",
     "center_coords_override_help": "Par défaut, le radar est centré sur l'emplacement de votre Home Assistant. Utilisez ceci pour spécifier un point central différent. Le mode 'Statique' utilise une entité de Zone. Le mode 'Mobile' utilise une entité de Personne ou de Suivi d'appareil.",
-    "center_modes": { "static": "Statique", "moving": "Mobile" },
+    "center_modes": {
+      "static": "Statique",
+      "moving": "Mobile"
+    },
     "center_entity": "Entité centrale (mobile)",
     "location_zone_entity": "Zone centrale (statique)",
     "markers": "Marqueurs (Points d'intérêt)",
@@ -56,16 +59,30 @@
       "no_home_location": "L'emplacement du centre n'est pas défini dans Home Assistant et aucune coordonnée personnalisée n'est fournie.",
       "multiple_center_definitions": "Veuillez fournir soit une entité de zone, soit des coordonnées manuelles pour le centre, mais pas les deux.",
       "incomplete_center_coords": "Veuillez fournir à la fois la latitude et la longitude du centre.",
-      "invalid_entity_coords": "Radar-card: L'entité '{entity}' n'a pas d'attributs de latitude et de longitude valides."
+      "invalid_entity_coords": "Radar-card: L'entité '{entity}' n'a pas d'attributs de latitude et de longitude valides.",
+      "entity_not_found": "Radar-card: L'entité '{entity}' est introuvable."
     },
     "no_entities": "Aucune entité à afficher",
+    "beyond_range": "Au-delà de la portée du radar",
+    "skipped": {
+      "title": "Non affiché",
+      "not_found": "introuvable",
+      "no_location": "sans position",
+      "unavailable": "indisponible"
+    },
+    "a11y": {
+      "description": "Affiche {count} entités. Le centre est votre position. Les entités sont placées selon la distance et la direction.",
+      "toggle_pulse": "Activer ou désactiver la pulsation pour {name}"
+    },
+    "marker_default_name": "Marqueur {date} {time}",
     "dialog": {
       "name": "Nom",
       "color": "Couleur",
       "cancel": "Annuler",
       "delete": "Supprimer",
       "save": "Enregistrer",
-      "add_marker_button": "Ajouter un marqueur au point central (emplacement actuel)"
+      "add_marker_button": "Ajouter un marqueur au point central (emplacement actuel)",
+      "edit_marker": "Modifier le marqueur"
     },
     "directions": {
       "N": "N",

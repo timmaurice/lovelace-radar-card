@@ -8,7 +8,10 @@
     "hide_at_home": "Entitäten zu Hause verbergen",
     "center_coords_override": "Mittelpunkt überschreiben",
     "center_coords_override_help": "Standardmäßig ist das Radar auf den Standort deines Home Assistant zentriert. Verwende dies, um einen anderen Mittelpunkt festzulegen. Der 'Statisch'-Modus verwendet eine Zonen-Entität. Der 'Beweglich'-Modus verwendet eine Personen- oder Geräte-Tracker-Entität.",
-    "center_modes": { "static": "Statisch", "moving": "Beweglich" },
+    "center_modes": {
+      "static": "Statisch",
+      "moving": "Beweglich"
+    },
     "center_entity": "Mittelpunkt-Entität (beweglich)",
     "location_zone_entity": "Mittelpunkt-Zone (statisch)",
     "markers": "Markierungen (POIs)",
@@ -56,16 +59,30 @@
       "no_home_location": "Mittelpunkt ist in Home Assistant nicht festgelegt und es wurden keine benutzerdefinierten Koordinaten angegeben.",
       "multiple_center_definitions": "Bitte geben Sie entweder eine Zonen-Entität oder manuelle Koordinaten für den Mittelpunkt an, nicht beides.",
       "incomplete_center_coords": "Bitte geben Sie sowohl den Mittelpunkt-Breitengrad als auch den Mittelpunkt-Längengrad an.",
-      "invalid_entity_coords": "Radar-card: Entität '{entity}' hat keine gültigen Breitengrad- und Längengrad-Attribute."
+      "invalid_entity_coords": "Radar-card: Entität '{entity}' hat keine gültigen Breitengrad- und Längengrad-Attribute.",
+      "entity_not_found": "Radar-card: Entität '{entity}' wurde nicht gefunden."
     },
     "no_entities": "Keine Entitäten zum Anzeigen",
+    "beyond_range": "Außerhalb der Radar-Reichweite",
+    "skipped": {
+      "title": "Nicht angezeigt",
+      "not_found": "nicht gefunden",
+      "no_location": "kein Standort",
+      "unavailable": "nicht verfügbar"
+    },
+    "a11y": {
+      "description": "Zeigt {count} Entitäten. Der Mittelpunkt ist dein Standort. Entitäten werden nach Entfernung und Richtung eingezeichnet.",
+      "toggle_pulse": "Pulsieren für {name} umschalten"
+    },
+    "marker_default_name": "Markierung {date} {time}",
     "dialog": {
       "name": "Name",
       "color": "Farbe",
       "cancel": "Abbrechen",
       "delete": "Löschen",
       "save": "Speichern",
-      "add_marker_button": "Markierung am Mittelpunkt (aktuellen Standort) hinzufügen"
+      "add_marker_button": "Markierung am Mittelpunkt (aktuellen Standort) hinzufügen",
+      "edit_marker": "Markierung bearbeiten"
     },
     "directions": {
       "N": "N",
