@@ -539,6 +539,21 @@ describe('RadarCard', () => {
       // Far dot should be at the edge (radius 90), close dot should be near the center.
       expect(Math.max(...radii)).toBeCloseTo(90, 0);
       expect(Math.min(...radii)).toBeLessThan(10);
+
+      // The outermost ring is the chart's edge, so the radar fills its box.
+      // d3's round ticks stopped at the last step inside the domain, which left
+      // a fifth of the chart empty whenever the furthest entity sat just under a
+      // round number - and the haversine puts a nominal kilometre at 999.998 m.
+      const ringRadii = Array.from(element.shadowRoot!.querySelectorAll('circle.grid-circle')).map((circle) =>
+        parseFloat(circle.getAttribute('r') ?? '0'),
+      );
+      expect(ringRadii).toHaveLength(4);
+      expect(Math.max(...ringRadii)).toBeCloseTo(90, 0);
+      const gaps = ringRadii
+        .slice()
+        .sort((a, b) => a - b)
+        .map((radius, index, all) => radius - (index === 0 ? 0 : all[index - 1]));
+      for (const gap of gaps) expect(gap).toBeCloseTo(90 / 4, 0);
     });
 
     it('should still draw grid rings when the most distant entity is at distance 0', async () => {

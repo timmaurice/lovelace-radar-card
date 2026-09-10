@@ -81,16 +81,18 @@ test.describe('The card on a real dashboard', () => {
     await expect(card.locator('ha-card')).toBeVisible({ timeout: 60_000 });
     await expect(card.locator('g.entity-group')).toHaveCount(2);
 
-    // Four rings, evenly spaced, none of them off the chart. They sit on d3's
-    // round ticks - 200 m apart for a one kilometre radar - so the outermost is
-    // the last round step inside the range, not the rim itself.
+    // Four rings, evenly spaced, and the outermost one on the chart's edge -
+    // that ring is the radar's range, so it has to reach the rim rather than
+    // stop at the last round number below it.
     const rings = await gridRadii(card);
     expect(rings).toHaveLength(4);
-    expect(rings[rings.length - 1]).toBeLessThanOrEqual(CHART_RADIUS);
+    expect(rings[rings.length - 1]).toBeCloseTo(CHART_RADIUS, 0);
     const gaps = rings.slice(1).map((radius, index) => radius - rings[index]);
     for (const gap of gaps) expect(gap).toBeCloseTo(rings[0], 1);
-    await expect(card.locator('text.grid-label')).toHaveCount(4);
-    await expect(card.locator('text.grid-label').last()).toHaveText('800 m');
+
+    // The outer label is the range. Grid labels drop the decimals of a whole
+    // number, so a kilometre reads "1 km" here and "1.00 km" in the legend.
+    await expect(card.locator('text.grid-label').last()).toHaveText('1 km');
 
     // The furthest tracker defines the scale, so it lands on the outer ring,
     // and due north means straight up. The nearer one is at half the distance
@@ -113,9 +115,10 @@ test.describe('The card on a real dashboard', () => {
 
     // The legend is the same data in words.
     await expect(card.locator('.legend-name')).toHaveText(['E2E North', 'E2E East']);
-    // 1 km on a sphere is 999.998 km's worth of haversine, so `formatDistance`
-    // is still in its sub-kilometre branch and rounds to metres.
-    await expect(card.locator('.legend-distance').first()).toHaveText('(1000 m)');
+    // The haversine puts a nominal kilometre at 999.998 m, which rounds to
+    // 1000 m - so formatDistance shows kilometres rather than flipping unit at
+    // an invisible fraction of a metre.
+    await expect(card.locator('.legend-distance').first()).toHaveText('(1.00 km)');
     await expect(card.locator('.legend-distance').nth(1)).toHaveText('(500 m)');
     await expect(card.locator('.no-entities')).toHaveCount(0);
     expect(consoleErrors).toEqual([]);

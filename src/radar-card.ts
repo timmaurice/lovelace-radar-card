@@ -36,6 +36,9 @@ const RADAR_CHART_MARGIN = 20;
 // its own data, or the outer rings become permanent dead space.
 // The number is in the user's display unit, so it is not the same physical length in km and mi;
 // that is acceptable because it is only ever used when there is no real distance to show.
+/** Rings drawn on the radar, the outermost one on the chart's edge. */
+const GRID_RING_COUNT = 4;
+
 const MIN_RADAR_MAX_DISTANCE = 0.1;
 
 const MARKER_STORAGE_KEY = 'radar-card-markers';
@@ -375,7 +378,16 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .attr('transform', `translate(${RADAR_CHART_WIDTH / 2}, ${RADAR_CHART_HEIGHT / 2})`);
 
     // Add background circles (grid)
-    const gridCircles = rScale.ticks(4).slice(1);
+    // Equal fractions of the actual maximum rather than d3's round ticks. Those
+    // stop at the last round step inside the domain, so a radar reaching
+    // 999.998 m - what the haversine returns for a nominal kilometre - drew its
+    // outermost ring at 0.8 km and left a fifth of the chart as dead space.
+    // This way the outer ring is both the chart's edge and the radar's range,
+    // and the furthest entity still sits on it.
+    const gridCircles = Array.from(
+      { length: GRID_RING_COUNT },
+      (_, index) => (maxDistance * (index + 1)) / GRID_RING_COUNT,
+    );
     const gridSelection = svg
       .selectAll('.grid-circle')
       .data(gridCircles)
