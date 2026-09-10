@@ -783,40 +783,46 @@ export class RadarCard extends LitElement implements LovelaceCard {
                 aria-label="Toggle pulse for ${point.name}"
                 @click=${() => this._handleLegendItemClick(point)}
               >
-                ${point.isMarker
-                  ? html`<span
-                      class="legend-marker"
-                      style="border-bottom-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
-                    ></span>`
-                  : point.entity_picture && this._config.show_avatars
-                    ? html`<img
-                        src="${point.entity_picture}"
-                        class="legend-avatar"
-                        style="border: 2px solid ${point.color || this._config.entity_color || 'var(--info-color)'};"
-                      />`
-                    : html`<span
-                        class="legend-color"
-                        style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
-                      ></span>`}
+                ${
+                  point.isMarker
+                    ? html`<span
+                        class="legend-marker"
+                        style="border-bottom-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+                      ></span>`
+                    : point.entity_picture && this._config.show_avatars
+                      ? html`<img
+                          src="${point.entity_picture}"
+                          class="legend-avatar"
+                          style="border: 2px solid ${point.color || this._config.entity_color || 'var(--info-color)'};"
+                        />`
+                      : html`<span
+                          class="legend-color"
+                          style="background-color: ${point.color || this._config.entity_color || 'var(--info-color)'}"
+                        ></span>`
+                }
                 <div class="legend-text-container ${!showDistance ? 'no-distance' : ''}">
-                  <span class="legend-name">${point.name}</span>${showDistance
-                    ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
-                    : nothing}
+                  <span class="legend-name">${point.name}</span>${
+                    showDistance
+                      ? html` <span class="legend-distance">(${formatDistance(point.distance, distanceUnit)})</span>`
+                      : nothing
+                  }
                 </div>
               </button>
-              ${point.isMarker
-                ? html`<ha-icon-button
-                    mini
-                    class="edit-marker-icon"
-                    .label=${'Edit Marker'}
-                    @click=${(e: Event) => {
-                      e.stopPropagation(); // Prevent the legend item click from firing
-                      this._handleMarkerClick(point);
-                    }}
-                  >
-                    <ha-icon icon="mdi:pencil"></ha-icon>
-                  </ha-icon-button>`
-                : nothing}
+              ${
+                point.isMarker
+                  ? html`<ha-icon-button
+                      mini
+                      class="edit-marker-icon"
+                      .label=${'Edit Marker'}
+                      @click=${(e: Event) => {
+                        e.stopPropagation(); // Prevent the legend item click from firing
+                        this._handleMarkerClick(point);
+                      }}
+                    >
+                      <ha-icon icon="mdi:pencil"></ha-icon>
+                    </ha-icon-button>`
+                  : nothing
+              }
             </div>
           `,
         )}
@@ -1077,24 +1083,28 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const radarContainer = html`
       <div class="radar-chart-container" @mousemove=${this._moveTooltip}>
         <div class="radar-chart"></div>
-        ${this._tooltip.visible
-          ? html`<div class="custom-tooltip visible" style="left: ${this._tooltip.x}px; top: ${this._tooltip.y}px;">
-              ${this._tooltip.content}
-            </div>`
-          : ''}
-        ${showAddMarkerButton
-          ? html`<ha-fab
-              mini
-              class="add-marker-btn ${shouldAnimateLegend ? 'fade-in' : ''}"
-              style=${style}
-              @click=${this._addMarker}
-              title=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
-              role="button"
-              aria-label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
-            >
-              <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
-            </ha-fab>`
-          : nothing}
+        ${
+          this._tooltip.visible
+            ? html`<div class="custom-tooltip visible" style="left: ${this._tooltip.x}px; top: ${this._tooltip.y}px;">
+                ${this._tooltip.content}
+              </div>`
+            : ''
+        }
+        ${
+          showAddMarkerButton
+            ? html`<ha-fab
+                mini
+                class="add-marker-btn ${shouldAnimateLegend ? 'fade-in' : ''}"
+                style=${style}
+                @click=${this._addMarker}
+                title=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
+                role="button"
+                aria-label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
+              >
+                <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
+              </ha-fab>`
+            : nothing
+        }
       </div>
     `;
 

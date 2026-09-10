@@ -47,28 +47,28 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
                 @click=${()=>this._handleLegendItemClick(t)}
               >
                 ${t.isMarker?F`<span
-                      class="legend-marker"
-                      style="border-bottom-color: ${t.color||this._config.entity_color||"var(--info-color)"}"
-                    ></span>`:t.entity_picture&&this._config.show_avatars?F`<img
-                        src="${t.entity_picture}"
-                        class="legend-avatar"
-                        style="border: 2px solid ${t.color||this._config.entity_color||"var(--info-color)"};"
-                      />`:F`<span
-                        class="legend-color"
-                        style="background-color: ${t.color||this._config.entity_color||"var(--info-color)"}"
-                      ></span>`}
+                        class="legend-marker"
+                        style="border-bottom-color: ${t.color||this._config.entity_color||"var(--info-color)"}"
+                      ></span>`:t.entity_picture&&this._config.show_avatars?F`<img
+                          src="${t.entity_picture}"
+                          class="legend-avatar"
+                          style="border: 2px solid ${t.color||this._config.entity_color||"var(--info-color)"};"
+                        />`:F`<span
+                          class="legend-color"
+                          style="background-color: ${t.color||this._config.entity_color||"var(--info-color)"}"
+                        ></span>`}
                 <div class="legend-text-container ${n?"":"no-distance"}">
                   <span class="legend-name">${t.name}</span>${n?F` <span class="legend-distance">(${Jr(t.distance,i)})</span>`:W}
                 </div>
               </button>
               ${t.isMarker?F`<ha-icon-button
-                    mini
-                    class="edit-marker-icon"
-                    .label=${"Edit Marker"}
-                    @click=${e=>{e.stopPropagation(),this._handleMarkerClick(t)}}
-                  >
-                    <ha-icon icon="mdi:pencil"></ha-icon>
-                  </ha-icon-button>`:W}
+                      mini
+                      class="edit-marker-icon"
+                      .label=${"Edit Marker"}
+                      @click=${e=>{e.stopPropagation(),this._handleMarkerClick(t)}}
+                    >
+                      <ha-icon icon="mdi:pencil"></ha-icon>
+                    </ha-icon-button>`:W}
             </div>
           `)}
       </div>
@@ -119,19 +119,19 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
       <div class="radar-chart-container" @mousemove=${this._moveTooltip}>
         <div class="radar-chart"></div>
         ${this._tooltip.visible?F`<div class="custom-tooltip visible" style="left: ${this._tooltip.x}px; top: ${this._tooltip.y}px;">
-              ${this._tooltip.content}
-            </div>`:""}
+                ${this._tooltip.content}
+              </div>`:""}
         ${o?F`<ha-fab
-              mini
-              class="add-marker-btn ${n?"fade-in":""}"
-              style=${l}
-              @click=${this._addMarker}
-              title=${tn(this.hass,"component.radar-card.card.dialog.add_marker_button")}
-              role="button"
-              aria-label=${tn(this.hass,"component.radar-card.card.dialog.add_marker_button")}
-            >
-              <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
-            </ha-fab>`:W}
+                mini
+                class="add-marker-btn ${n?"fade-in":""}"
+                style=${l}
+                @click=${this._addMarker}
+                title=${tn(this.hass,"component.radar-card.card.dialog.add_marker_button")}
+                role="button"
+                aria-label=${tn(this.hass,"component.radar-card.card.dialog.add_marker_button")}
+              >
+                <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
+              </ha-fab>`:W}
       </div>
     `;return F`
       <ha-card .header=${this._config.title}>
@@ -154,14 +154,14 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
           @click=${()=>this._toggleColorPicker(l)}
         >
           ${o?F`<ha-icon-button
-                slot="end"
-                class="clear-button"
-                .label=${"Clear"}
-                @click=${t=>{if(t.stopPropagation(),r){const t=[...this._getEntities()],i={...t[n]};delete i[e],t[n]=i,this._config={...this._config,entities:t},Zr(this,"config-changed",{config:this._config})}else{const t={...this._config};delete t[e],this._config=t,Zr(this,"config-changed",{config:t})}this._closeColorPicker()}}
-                title="Clear color"
-              >
-                <ha-icon icon="mdi:close"></ha-icon>
-              </ha-icon-button>`:W}
+                  slot="end"
+                  class="clear-button"
+                  .label=${"Clear"}
+                  @click=${t=>{if(t.stopPropagation(),r){const t=[...this._getEntities()],i={...t[n]};delete i[e],t[n]=i,this._config={...this._config,entities:t},Zr(this,"config-changed",{config:this._config})}else{const t={...this._config};delete t[e],this._config=t,Zr(this,"config-changed",{config:t})}this._closeColorPicker()}}
+                  title="Clear color"
+                >
+                  <ha-icon icon="mdi:close"></ha-icon>
+                </ha-icon-button>`:W}
         </ha-input>
         <div
           class="color-preview"
@@ -169,15 +169,15 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
           @click=${()=>this._toggleColorPicker(l)}
         ></div>
         ${c?F`
-              <div class="color-picker-popup ${r?"popup-top":""}">
-                <hex-color-picker
-                  .configValue=${e}
-                  data-index=${n}
-                  .color=${s||"#000000"}
-                  @color-changed=${r?this._entityAttributeChanged:this._valueChanged}
-                ></hex-color-picker>
-              </div>
-            `:W}
+                <div class="color-picker-popup ${r?"popup-top":""}">
+                  <hex-color-picker
+                    .configValue=${e}
+                    data-index=${n}
+                    .color=${s||"#000000"}
+                    @color-changed=${r?this._entityAttributeChanged:this._valueChanged}
+                  ></hex-color-picker>
+                </div>
+              `:W}
       </div>
     `}_getEntities(){return this._config.entities?.map(t=>"string"==typeof t?{entity:t}:t)||[]}_addEntity(){const t=[...this._getEntities(),{entity:""}];this._config={...this._config,entities:t},Zr(this,"config-changed",{config:this._config})}_removeEntity(t){const e=[...this._getEntities()];e.splice(t,1),this._config={...this._config,entities:e},Zr(this,"config-changed",{config:this._config})}_entityAttributeChanged(t){if(!this._config||!this.hass||null===this._editingIndex)return;const e=t.target,n=Number(e.dataset.index),i=e.configValue;if(isNaN(n))return;const r=[...this._getEntities()],a={...r[n]};let o;o="value-changed"===t.type||"color-changed"===t.type?t.detail.value:e.value,""===o||void 0===o?delete a[i]:a[i]=o,r[n]=a,this._config={...this._config,entities:r},Zr(this,"config-changed",{config:this._config})}_entityValueChanged(t){const e=t.target,n=e.index,i=[...this._getEntities()];i[n]={...i[n],entity:e.value},this._config={...this._config,entities:i},Zr(this,"config-changed",{config:this._config})}_testAnimation(){Zr(this,"radar-card-test-animation")}_editEntity(t){this._editingIndex=t,this.requestUpdate()}_goBack(){this._editingIndex=null,this.requestUpdate()}_handleDragStart(t,e){this._draggedIndex=e,t.dataTransfer&&(t.dataTransfer.effectAllowed="move",t.dataTransfer.setData("text/plain","")),t.currentTarget.classList.add("is-dragging"),this.shadowRoot?.querySelector(".entities-container")?.classList.add("drag-active")}_handleDragEnter(t){t.preventDefault();const e=t.currentTarget;e.dataset.index!==String(this._draggedIndex)&&e.classList.add("drag-over")}_handleDragOver(t){t.preventDefault()}_handleDragLeave(t){t.currentTarget.classList.remove("drag-over")}_handleDrop(t,e){if(t.preventDefault(),t.currentTarget.classList.remove("drag-over"),null===this._draggedIndex||this._draggedIndex===e)return;const n=[...this._getEntities()],[i]=n.splice(this._draggedIndex,1);n.splice(e,0,i),this._config={...this._config,entities:n},Zr(this,"config-changed",{config:this._config})}_handleDragEnd(){this.shadowRoot?.querySelectorAll(".entity-row").forEach(t=>{t.classList.remove("is-dragging","drag-over")}),this.shadowRoot?.querySelector(".entities-container")?.classList.remove("drag-active"),this._draggedIndex=null}_renderEntityEditor(){if(null===this._editingIndex)return W;const t=this._getEntities()[this._editingIndex];if(!t)return W;const e=this.hass.states[t.entity],n=t.name||e?.attributes.friendly_name||t.entity;return F`
       <div class="card-content card-config">
@@ -238,19 +238,19 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
               </div>
             </div>
             ${this._showHelpFor.has("auto_radar_max_distance")?F`
-                  <div class="help-text">
-                    ${tn(this.hass,"component.radar-card.editor.auto_radar_max_distance_help")}
-                  </div>
-                `:W}
+                    <div class="help-text">
+                      ${tn(this.hass,"component.radar-card.editor.auto_radar_max_distance_help")}
+                    </div>
+                  `:W}
             ${!1!==this._config.auto_radar_max_distance?W:F`
-                  <ha-input
-                    .label=${tn(this.hass,"component.radar-card.editor.radar_max_distance")}
-                    type="number"
-                    .value=${this._config.radar_max_distance||""}
-                    .configValue=${"radar_max_distance"}
-                    @input=${this._valueChanged}
-                  ></ha-input>
-                `}
+                    <ha-input
+                      .label=${tn(this.hass,"component.radar-card.editor.radar_max_distance")}
+                      type="number"
+                      .value=${this._config.radar_max_distance||""}
+                      .configValue=${"radar_max_distance"}
+                      @input=${this._valueChanged}
+                    ></ha-input>
+                  `}
             <div class="option-row">
               <ha-switch
                 .checked=${!0===this._config.hide_at_home}
@@ -271,10 +271,10 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
                 ></ha-icon>
               </div>
               ${this._showHelpFor.has("center_coords_override")?F`
-                    <div class="help-text no-indent">
-                      ${tn(this.hass,"component.radar-card.editor.center_coords_override_help")}
-                    </div>
-                  `:W}
+                      <div class="help-text no-indent">
+                        ${tn(this.hass,"component.radar-card.editor.center_coords_override_help")}
+                      </div>
+                    `:W}
               <div class="option-row">
                 <ha-form-radio .name=${"centerMode"} .value=${t} @change=${this._handleCenterModeChange}>
                   <label class="radio-label">
@@ -288,50 +288,50 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
                 </ha-form-radio>
               </div>
               ${"static"===t?F`<ha-entity-picker
-                    .hass=${this.hass}
-                    .value=${this._config.location_zone_entity||""}
-                    .configValue=${"location_zone_entity"}
-                    @value-changed=${this._valueChanged}
-                    .label=${tn(this.hass,"component.radar-card.editor.location_zone_entity")}
-                    .includeDomains=${["zone"]}
-                    allow-custom-entity
-                  ></ha-entity-picker>`:F`<ha-entity-picker
-                    .label=${tn(this.hass,"component.radar-card.editor.center_entity")}
-                    .hass=${this.hass}
-                    .value=${this._config.center_entity||""}
-                    .configValue=${"center_entity"}
-                    @value-changed=${this._valueChanged}
-                    .includeDomains=${["device_tracker","person"]}
-                    allow-custom-entity
-                  ></ha-entity-picker>`}
+                      .hass=${this.hass}
+                      .value=${this._config.location_zone_entity||""}
+                      .configValue=${"location_zone_entity"}
+                      @value-changed=${this._valueChanged}
+                      .label=${tn(this.hass,"component.radar-card.editor.location_zone_entity")}
+                      .includeDomains=${["zone"]}
+                      allow-custom-entity
+                    ></ha-entity-picker>`:F`<ha-entity-picker
+                      .label=${tn(this.hass,"component.radar-card.editor.center_entity")}
+                      .hass=${this.hass}
+                      .value=${this._config.center_entity||""}
+                      .configValue=${"center_entity"}
+                      @value-changed=${this._valueChanged}
+                      .includeDomains=${["device_tracker","person"]}
+                      allow-custom-entity
+                    ></ha-entity-picker>`}
               ${"moving"===t?F`
-                    <div class="option-group-title">
-                      <span>${tn(this.hass,"component.radar-card.editor.markers")}</span>
-                      <ha-icon
-                        class="help-icon"
-                        icon="mdi:help-circle-outline"
-                        @click=${()=>this._toggleHelp("markers_help")}
-                      ></ha-icon>
-                    </div>
-                    ${this._showHelpFor.has("markers_help")?F`<div class="help-text no-indent">
-                          ${tn(this.hass,"component.radar-card.editor.markers_help")}
-                        </div>`:W}
-                    <div class="option-row">
-                      <ha-switch
-                        .checked=${!0===this._config.enable_markers}
-                        .configValue=${"enable_markers"}
-                        @change=${this._valueChanged}
-                      ></ha-switch>
-                      <label class="mdc-label"
-                        >${tn(this.hass,"component.radar-card.editor.enable_markers")}</label
-                      >
-                    </div>
-                    ${this._config.enable_markers?F`<div class="button-row">
-                          <ha-button @click=${this._clearAllMarkers} .disabled=${0===this._markers.length}>
-                            ${tn(this.hass,"component.radar-card.editor.clear_all_markers")}
-                          </ha-button>
-                        </div>`:W}
-                  `:W}
+                      <div class="option-group-title">
+                        <span>${tn(this.hass,"component.radar-card.editor.markers")}</span>
+                        <ha-icon
+                          class="help-icon"
+                          icon="mdi:help-circle-outline"
+                          @click=${()=>this._toggleHelp("markers_help")}
+                        ></ha-icon>
+                      </div>
+                      ${this._showHelpFor.has("markers_help")?F`<div class="help-text no-indent">
+                              ${tn(this.hass,"component.radar-card.editor.markers_help")}
+                            </div>`:W}
+                      <div class="option-row">
+                        <ha-switch
+                          .checked=${!0===this._config.enable_markers}
+                          .configValue=${"enable_markers"}
+                          @change=${this._valueChanged}
+                        ></ha-switch>
+                        <label class="mdc-label"
+                          >${tn(this.hass,"component.radar-card.editor.enable_markers")}</label
+                        >
+                      </div>
+                      ${this._config.enable_markers?F`<div class="button-row">
+                              <ha-button @click=${this._clearAllMarkers} .disabled=${0===this._markers.length}>
+                                ${tn(this.hass,"component.radar-card.editor.clear_all_markers")}
+                              </ha-button>
+                            </div>`:W}
+                    `:W}
             </div>
           </div>
 
@@ -384,10 +384,10 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
               ></ha-icon>
             </div>
             ${this._showHelpFor.has("appearance_help")?F`
-                  <div class="help-text no-indent">
-                    ${tn(this.hass,"component.radar-card.editor.color_contrast_help")}
-                  </div>
-                `:W}
+                    <div class="help-text no-indent">
+                      ${tn(this.hass,"component.radar-card.editor.color_contrast_help")}
+                    </div>
+                  `:W}
             <div class="side-by-side">
               ${this._renderColorInput(tn(this.hass,"component.radar-card.editor.grid_color"),"grid_color",void 0,!1)}
               ${this._renderColorInput(tn(this.hass,"component.radar-card.editor.font_color"),"font_color",void 0,!1)}
@@ -426,8 +426,8 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
               ></ha-icon>
             </div>
             ${this._showHelpFor.has("legend_pulse_help")?F`<div class="help-text no-indent">
-                  ${tn(this.hass,"component.radar-card.editor.legend_pulse_help")}
-                </div>`:W}
+                    ${tn(this.hass,"component.radar-card.editor.legend_pulse_help")}
+                  </div>`:W}
             <div class="option-row">
               <ha-switch
                 .checked=${!1!==this._config.show_legend}
@@ -437,25 +437,25 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
               <label class="mdc-label">${tn(this.hass,"component.radar-card.editor.show_legend")}</label>
             </div>
             ${!1!==this._config.show_legend?F`
-                  <ha-selector
-                    .hass=${this.hass}
-                    .label=${tn(this.hass,"component.radar-card.editor.legend_position")}
-                    .selector=${{select:{mode:"dropdown",options:[{value:"bottom",label:tn(this.hass,"component.radar-card.editor.legend_positions.bottom")},{value:"right",label:tn(this.hass,"component.radar-card.editor.legend_positions.right")},{value:"left",label:tn(this.hass,"component.radar-card.editor.legend_positions.left")}]}}}
-                    .value=${this._config.legend_position||"bottom"}
-                    .configValue=${"legend_position"}
-                    @value-changed=${this._valueChanged}
-                  ></ha-selector>
-                  <div class="option-row">
-                    <ha-switch
-                      .checked=${!1!==this._config.legend_show_distance}
-                      .configValue=${"legend_show_distance"}
-                      @change=${this._valueChanged}
-                    ></ha-switch>
-                    <label class="mdc-label"
-                      >${tn(this.hass,"component.radar-card.editor.legend_show_distance")}</label
-                    >
-                  </div>
-                `:W}
+                    <ha-selector
+                      .hass=${this.hass}
+                      .label=${tn(this.hass,"component.radar-card.editor.legend_position")}
+                      .selector=${{select:{mode:"dropdown",options:[{value:"bottom",label:tn(this.hass,"component.radar-card.editor.legend_positions.bottom")},{value:"right",label:tn(this.hass,"component.radar-card.editor.legend_positions.right")},{value:"left",label:tn(this.hass,"component.radar-card.editor.legend_positions.left")}]}}}
+                      .value=${this._config.legend_position||"bottom"}
+                      .configValue=${"legend_position"}
+                      @value-changed=${this._valueChanged}
+                    ></ha-selector>
+                    <div class="option-row">
+                      <ha-switch
+                        .checked=${!1!==this._config.legend_show_distance}
+                        .configValue=${"legend_show_distance"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                      <label class="mdc-label"
+                        >${tn(this.hass,"component.radar-card.editor.legend_show_distance")}</label
+                      >
+                    </div>
+                  `:W}
             <div class="option-group-title">${tn(this.hass,"component.radar-card.editor.animation")}</div>
             <div class="option-row">
               <ha-switch
@@ -466,21 +466,21 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
               <label class="mdc-label">${tn(this.hass,"component.radar-card.editor.animation_enabled")}</label>
             </div>
             ${!1!==this._config.animation_enabled?F`
-                  <div class="duration-with-test-button">
-                    <ha-input
-                      .label=${tn(this.hass,"component.radar-card.editor.animation_duration")}
-                      type="number"
-                      .value=${this._config.animation_duration||""}
-                      .configValue=${"animation_duration"}
-                      @input=${this._valueChanged}
-                    >
-                      <span slot="suffix">ms</span>
-                    </ha-input>
-                    <ha-button @click=${this._testAnimation}>
-                      ${tn(this.hass,"component.radar-card.editor.test_animation")}
-                    </ha-button>
-                  </div>
-                `:W}
+                    <div class="duration-with-test-button">
+                      <ha-input
+                        .label=${tn(this.hass,"component.radar-card.editor.animation_duration")}
+                        type="number"
+                        .value=${this._config.animation_duration||""}
+                        .configValue=${"animation_duration"}
+                        @input=${this._valueChanged}
+                      >
+                        <span slot="suffix">ms</span>
+                      </ha-input>
+                      <ha-button @click=${this._testAnimation}>
+                        ${tn(this.hass,"component.radar-card.editor.test_animation")}
+                      </ha-button>
+                    </div>
+                  `:W}
             <div class="option-row">
               <ha-switch
                 .checked=${!0===this._config.moving_animation_enabled}
@@ -499,32 +499,32 @@ const dt={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:w},ht=(t=dt
               </div>
             </div>
             ${this._showHelpFor.has("moving_animation_enabled")?F`
-                  <div class="help-text">
-                    ${tn(this.hass,"component.radar-card.editor.moving_animation_enabled_help")}
-                  </div>
-                `:W}
+                    <div class="help-text">
+                      ${tn(this.hass,"component.radar-card.editor.moving_animation_enabled_help")}
+                    </div>
+                  `:W}
             ${!0===this._config.moving_animation_enabled?F`
-                  <div class="side-by-side">
-                    <ha-input
-                      .label=${tn(this.hass,"component.radar-card.editor.moving_animation_attribute")}
-                      .value=${this._config.moving_animation_attribute||""}
-                      .configValue=${"moving_animation_attribute"}
-                      .placeholder=${"activity"}
-                      @input=${this._valueChanged}
-                      .helper=${tn(this.hass,"component.radar-card.editor.moving_animation_attribute_help")}
-                      .helperPersistent=${!0}
-                    ></ha-input>
-                    <ha-input
-                      .label=${tn(this.hass,"component.radar-card.editor.moving_animation_activities")}
-                      .value=${(this._config.moving_animation_activities||[]).join(", ")}
-                      .configValue=${"moving_animation_activities"}
-                      .placeholder=${"Automotive, Cycling, Walking, Driving"}
-                      @input=${this._valueChanged}
-                      .helper=${tn(this.hass,"component.radar-card.editor.moving_animation_activities_help")}
-                      .helperPersistent=${!0}
-                    ></ha-input>
-                  </div>
-                `:W}
+                    <div class="side-by-side">
+                      <ha-input
+                        .label=${tn(this.hass,"component.radar-card.editor.moving_animation_attribute")}
+                        .value=${this._config.moving_animation_attribute||""}
+                        .configValue=${"moving_animation_attribute"}
+                        .placeholder=${"activity"}
+                        @input=${this._valueChanged}
+                        .helper=${tn(this.hass,"component.radar-card.editor.moving_animation_attribute_help")}
+                        .helperPersistent=${!0}
+                      ></ha-input>
+                      <ha-input
+                        .label=${tn(this.hass,"component.radar-card.editor.moving_animation_activities")}
+                        .value=${(this._config.moving_animation_activities||[]).join(", ")}
+                        .configValue=${"moving_animation_activities"}
+                        .placeholder=${"Automotive, Cycling, Walking, Driving"}
+                        @input=${this._valueChanged}
+                        .helper=${tn(this.hass,"component.radar-card.editor.moving_animation_activities_help")}
+                        .helperPersistent=${!0}
+                      ></ha-input>
+                    </div>
+                  `:W}
           </div>
         </div>
       </ha-card>

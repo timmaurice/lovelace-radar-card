@@ -301,35 +301,39 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
           @input=${isEntityConfig ? this._entityAttributeChanged : this._valueChanged}
           @click=${() => this._toggleColorPicker(pickerId)}
         >
-          ${value
-            ? html`<ha-icon-button
-                slot="end"
-                class="clear-button"
-                .label=${'Clear'}
-                @click=${handleClear}
-                title="Clear color"
-              >
-                <ha-icon icon="mdi:close"></ha-icon>
-              </ha-icon-button>`
-            : nothing}
+          ${
+            value
+              ? html`<ha-icon-button
+                  slot="end"
+                  class="clear-button"
+                  .label=${'Clear'}
+                  @click=${handleClear}
+                  title="Clear color"
+                >
+                  <ha-icon icon="mdi:close"></ha-icon>
+                </ha-icon-button>`
+              : nothing
+          }
         </ha-input>
         <div
           class="color-preview"
           style="background-color: ${resolvedValue || 'transparent'}"
           @click=${() => this._toggleColorPicker(pickerId)}
         ></div>
-        ${isPickerOpen
-          ? html`
-              <div class="color-picker-popup ${isEntityConfig ? 'popup-top' : ''}">
-                <hex-color-picker
-                  .configValue=${configValue}
-                  data-index=${index}
-                  .color=${resolvedValue || '#000000'}
-                  @color-changed=${isEntityConfig ? this._entityAttributeChanged : this._valueChanged}
-                ></hex-color-picker>
-              </div>
-            `
-          : nothing}
+        ${
+          isPickerOpen
+            ? html`
+                <div class="color-picker-popup ${isEntityConfig ? 'popup-top' : ''}">
+                  <hex-color-picker
+                    .configValue=${configValue}
+                    data-index=${index}
+                    .color=${resolvedValue || '#000000'}
+                    @color-changed=${isEntityConfig ? this._entityAttributeChanged : this._valueChanged}
+                  ></hex-color-picker>
+                </div>
+              `
+            : nothing
+        }
       </div>
     `;
   }
@@ -543,24 +547,28 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 ></ha-icon>
               </div>
             </div>
-            ${this._showHelpFor.has('auto_radar_max_distance')
-              ? html`
-                  <div class="help-text">
-                    ${localize(this.hass, 'component.radar-card.editor.auto_radar_max_distance_help')}
-                  </div>
-                `
-              : nothing}
-            ${this._config.auto_radar_max_distance !== false
-              ? nothing
-              : html`
-                  <ha-input
-                    .label=${localize(this.hass, 'component.radar-card.editor.radar_max_distance')}
-                    type="number"
-                    .value=${this._config.radar_max_distance || ''}
-                    .configValue=${'radar_max_distance'}
-                    @input=${this._valueChanged}
-                  ></ha-input>
-                `}
+            ${
+              this._showHelpFor.has('auto_radar_max_distance')
+                ? html`
+                    <div class="help-text">
+                      ${localize(this.hass, 'component.radar-card.editor.auto_radar_max_distance_help')}
+                    </div>
+                  `
+                : nothing
+            }
+            ${
+              this._config.auto_radar_max_distance !== false
+                ? nothing
+                : html`
+                    <ha-input
+                      .label=${localize(this.hass, 'component.radar-card.editor.radar_max_distance')}
+                      type="number"
+                      .value=${this._config.radar_max_distance || ''}
+                      .configValue=${'radar_max_distance'}
+                      @input=${this._valueChanged}
+                    ></ha-input>
+                  `
+            }
             <div class="option-row">
               <ha-switch
                 .checked=${this._config.hide_at_home === true}
@@ -580,13 +588,15 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                   @click=${() => this._toggleHelp('center_coords_override')}
                 ></ha-icon>
               </div>
-              ${this._showHelpFor.has('center_coords_override')
-                ? html`
-                    <div class="help-text no-indent">
-                      ${localize(this.hass, 'component.radar-card.editor.center_coords_override_help')}
-                    </div>
-                  `
-                : nothing}
+              ${
+                this._showHelpFor.has('center_coords_override')
+                  ? html`
+                      <div class="help-text no-indent">
+                        ${localize(this.hass, 'component.radar-card.editor.center_coords_override_help')}
+                      </div>
+                    `
+                  : nothing
+              }
               <div class="option-row">
                 <ha-form-radio .name=${'centerMode'} .value=${centerMode} @change=${this._handleCenterModeChange}>
                   <label class="radio-label">
@@ -599,59 +609,67 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                   </label>
                 </ha-form-radio>
               </div>
-              ${centerMode === 'static'
-                ? html`<ha-entity-picker
-                    .hass=${this.hass}
-                    .value=${this._config.location_zone_entity || ''}
-                    .configValue=${'location_zone_entity'}
-                    @value-changed=${this._valueChanged}
-                    .label=${localize(this.hass, 'component.radar-card.editor.location_zone_entity')}
-                    .includeDomains=${['zone']}
-                    allow-custom-entity
-                  ></ha-entity-picker>`
-                : html`<ha-entity-picker
-                    .label=${localize(this.hass, 'component.radar-card.editor.center_entity')}
-                    .hass=${this.hass}
-                    .value=${this._config.center_entity || ''}
-                    .configValue=${'center_entity'}
-                    @value-changed=${this._valueChanged}
-                    .includeDomains=${['device_tracker', 'person']}
-                    allow-custom-entity
-                  ></ha-entity-picker>`}
-              ${centerMode === 'moving'
-                ? html`
-                    <div class="option-group-title">
-                      <span>${localize(this.hass, 'component.radar-card.editor.markers')}</span>
-                      <ha-icon
-                        class="help-icon"
-                        icon="mdi:help-circle-outline"
-                        @click=${() => this._toggleHelp('markers_help')}
-                      ></ha-icon>
-                    </div>
-                    ${this._showHelpFor.has('markers_help')
-                      ? html`<div class="help-text no-indent">
-                          ${localize(this.hass, 'component.radar-card.editor.markers_help')}
-                        </div>`
-                      : nothing}
-                    <div class="option-row">
-                      <ha-switch
-                        .checked=${this._config.enable_markers === true}
-                        .configValue=${'enable_markers'}
-                        @change=${this._valueChanged}
-                      ></ha-switch>
-                      <label class="mdc-label"
-                        >${localize(this.hass, 'component.radar-card.editor.enable_markers')}</label
-                      >
-                    </div>
-                    ${this._config.enable_markers
-                      ? html`<div class="button-row">
-                          <ha-button @click=${this._clearAllMarkers} .disabled=${this._markers.length === 0}>
-                            ${localize(this.hass, 'component.radar-card.editor.clear_all_markers')}
-                          </ha-button>
-                        </div>`
-                      : nothing}
-                  `
-                : nothing}
+              ${
+                centerMode === 'static'
+                  ? html`<ha-entity-picker
+                      .hass=${this.hass}
+                      .value=${this._config.location_zone_entity || ''}
+                      .configValue=${'location_zone_entity'}
+                      @value-changed=${this._valueChanged}
+                      .label=${localize(this.hass, 'component.radar-card.editor.location_zone_entity')}
+                      .includeDomains=${['zone']}
+                      allow-custom-entity
+                    ></ha-entity-picker>`
+                  : html`<ha-entity-picker
+                      .label=${localize(this.hass, 'component.radar-card.editor.center_entity')}
+                      .hass=${this.hass}
+                      .value=${this._config.center_entity || ''}
+                      .configValue=${'center_entity'}
+                      @value-changed=${this._valueChanged}
+                      .includeDomains=${['device_tracker', 'person']}
+                      allow-custom-entity
+                    ></ha-entity-picker>`
+              }
+              ${
+                centerMode === 'moving'
+                  ? html`
+                      <div class="option-group-title">
+                        <span>${localize(this.hass, 'component.radar-card.editor.markers')}</span>
+                        <ha-icon
+                          class="help-icon"
+                          icon="mdi:help-circle-outline"
+                          @click=${() => this._toggleHelp('markers_help')}
+                        ></ha-icon>
+                      </div>
+                      ${
+                        this._showHelpFor.has('markers_help')
+                          ? html`<div class="help-text no-indent">
+                              ${localize(this.hass, 'component.radar-card.editor.markers_help')}
+                            </div>`
+                          : nothing
+                      }
+                      <div class="option-row">
+                        <ha-switch
+                          .checked=${this._config.enable_markers === true}
+                          .configValue=${'enable_markers'}
+                          @change=${this._valueChanged}
+                        ></ha-switch>
+                        <label class="mdc-label"
+                          >${localize(this.hass, 'component.radar-card.editor.enable_markers')}</label
+                        >
+                      </div>
+                      ${
+                        this._config.enable_markers
+                          ? html`<div class="button-row">
+                              <ha-button @click=${this._clearAllMarkers} .disabled=${this._markers.length === 0}>
+                                ${localize(this.hass, 'component.radar-card.editor.clear_all_markers')}
+                              </ha-button>
+                            </div>`
+                          : nothing
+                      }
+                    `
+                  : nothing
+              }
             </div>
           </div>
 
@@ -705,13 +723,15 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 @click=${() => this._toggleHelp('appearance_help')}
               ></ha-icon>
             </div>
-            ${this._showHelpFor.has('appearance_help')
-              ? html`
-                  <div class="help-text no-indent">
-                    ${localize(this.hass, 'component.radar-card.editor.color_contrast_help')}
-                  </div>
-                `
-              : nothing}
+            ${
+              this._showHelpFor.has('appearance_help')
+                ? html`
+                    <div class="help-text no-indent">
+                      ${localize(this.hass, 'component.radar-card.editor.color_contrast_help')}
+                    </div>
+                  `
+                : nothing
+            }
             <div class="side-by-side">
               ${this._renderColorInput(
                 localize(this.hass, 'component.radar-card.editor.grid_color'),
@@ -764,11 +784,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 @click=${() => this._toggleHelp('legend_pulse_help')}
               ></ha-icon>
             </div>
-            ${this._showHelpFor.has('legend_pulse_help')
-              ? html`<div class="help-text no-indent">
-                  ${localize(this.hass, 'component.radar-card.editor.legend_pulse_help')}
-                </div>`
-              : nothing}
+            ${
+              this._showHelpFor.has('legend_pulse_help')
+                ? html`<div class="help-text no-indent">
+                    ${localize(this.hass, 'component.radar-card.editor.legend_pulse_help')}
+                  </div>`
+                : nothing
+            }
             <div class="option-row">
               <ha-switch
                 .checked=${this._config.show_legend !== false}
@@ -777,46 +799,48 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
               ></ha-switch>
               <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.show_legend')}</label>
             </div>
-            ${this._config.show_legend !== false
-              ? html`
-                  <ha-selector
-                    .hass=${this.hass}
-                    .label=${localize(this.hass, 'component.radar-card.editor.legend_position')}
-                    .selector=${{
-                      select: {
-                        mode: 'dropdown',
-                        options: [
-                          {
-                            value: 'bottom',
-                            label: localize(this.hass, 'component.radar-card.editor.legend_positions.bottom'),
-                          },
-                          {
-                            value: 'right',
-                            label: localize(this.hass, 'component.radar-card.editor.legend_positions.right'),
-                          },
-                          {
-                            value: 'left',
-                            label: localize(this.hass, 'component.radar-card.editor.legend_positions.left'),
-                          },
-                        ],
-                      },
-                    }}
-                    .value=${this._config.legend_position || 'bottom'}
-                    .configValue=${'legend_position'}
-                    @value-changed=${this._valueChanged}
-                  ></ha-selector>
-                  <div class="option-row">
-                    <ha-switch
-                      .checked=${this._config.legend_show_distance !== false}
-                      .configValue=${'legend_show_distance'}
-                      @change=${this._valueChanged}
-                    ></ha-switch>
-                    <label class="mdc-label"
-                      >${localize(this.hass, 'component.radar-card.editor.legend_show_distance')}</label
-                    >
-                  </div>
-                `
-              : nothing}
+            ${
+              this._config.show_legend !== false
+                ? html`
+                    <ha-selector
+                      .hass=${this.hass}
+                      .label=${localize(this.hass, 'component.radar-card.editor.legend_position')}
+                      .selector=${{
+                        select: {
+                          mode: 'dropdown',
+                          options: [
+                            {
+                              value: 'bottom',
+                              label: localize(this.hass, 'component.radar-card.editor.legend_positions.bottom'),
+                            },
+                            {
+                              value: 'right',
+                              label: localize(this.hass, 'component.radar-card.editor.legend_positions.right'),
+                            },
+                            {
+                              value: 'left',
+                              label: localize(this.hass, 'component.radar-card.editor.legend_positions.left'),
+                            },
+                          ],
+                        },
+                      }}
+                      .value=${this._config.legend_position || 'bottom'}
+                      .configValue=${'legend_position'}
+                      @value-changed=${this._valueChanged}
+                    ></ha-selector>
+                    <div class="option-row">
+                      <ha-switch
+                        .checked=${this._config.legend_show_distance !== false}
+                        .configValue=${'legend_show_distance'}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                      <label class="mdc-label"
+                        >${localize(this.hass, 'component.radar-card.editor.legend_show_distance')}</label
+                      >
+                    </div>
+                  `
+                : nothing
+            }
             <div class="option-group-title">${localize(this.hass, 'component.radar-card.editor.animation')}</div>
             <div class="option-row">
               <ha-switch
@@ -826,24 +850,26 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
               ></ha-switch>
               <label class="mdc-label">${localize(this.hass, 'component.radar-card.editor.animation_enabled')}</label>
             </div>
-            ${this._config.animation_enabled !== false
-              ? html`
-                  <div class="duration-with-test-button">
-                    <ha-input
-                      .label=${localize(this.hass, 'component.radar-card.editor.animation_duration')}
-                      type="number"
-                      .value=${this._config.animation_duration || ''}
-                      .configValue=${'animation_duration'}
-                      @input=${this._valueChanged}
-                    >
-                      <span slot="suffix">ms</span>
-                    </ha-input>
-                    <ha-button @click=${this._testAnimation}>
-                      ${localize(this.hass, 'component.radar-card.editor.test_animation')}
-                    </ha-button>
-                  </div>
-                `
-              : nothing}
+            ${
+              this._config.animation_enabled !== false
+                ? html`
+                    <div class="duration-with-test-button">
+                      <ha-input
+                        .label=${localize(this.hass, 'component.radar-card.editor.animation_duration')}
+                        type="number"
+                        .value=${this._config.animation_duration || ''}
+                        .configValue=${'animation_duration'}
+                        @input=${this._valueChanged}
+                      >
+                        <span slot="suffix">ms</span>
+                      </ha-input>
+                      <ha-button @click=${this._testAnimation}>
+                        ${localize(this.hass, 'component.radar-card.editor.test_animation')}
+                      </ha-button>
+                    </div>
+                  `
+                : nothing
+            }
             <div class="option-row">
               <ha-switch
                 .checked=${this._config.moving_animation_enabled === true}
@@ -861,37 +887,41 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 ></ha-icon>
               </div>
             </div>
-            ${this._showHelpFor.has('moving_animation_enabled')
-              ? html`
-                  <div class="help-text">
-                    ${localize(this.hass, 'component.radar-card.editor.moving_animation_enabled_help')}
-                  </div>
-                `
-              : nothing}
-            ${this._config.moving_animation_enabled === true
-              ? html`
-                  <div class="side-by-side">
-                    <ha-input
-                      .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute')}
-                      .value=${this._config.moving_animation_attribute || ''}
-                      .configValue=${'moving_animation_attribute'}
-                      .placeholder=${'activity'}
-                      @input=${this._valueChanged}
-                      .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute_help')}
-                      .helperPersistent=${true}
-                    ></ha-input>
-                    <ha-input
-                      .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities')}
-                      .value=${(this._config.moving_animation_activities || []).join(', ')}
-                      .configValue=${'moving_animation_activities'}
-                      .placeholder=${'Automotive, Cycling, Walking, Driving'}
-                      @input=${this._valueChanged}
-                      .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities_help')}
-                      .helperPersistent=${true}
-                    ></ha-input>
-                  </div>
-                `
-              : nothing}
+            ${
+              this._showHelpFor.has('moving_animation_enabled')
+                ? html`
+                    <div class="help-text">
+                      ${localize(this.hass, 'component.radar-card.editor.moving_animation_enabled_help')}
+                    </div>
+                  `
+                : nothing
+            }
+            ${
+              this._config.moving_animation_enabled === true
+                ? html`
+                    <div class="side-by-side">
+                      <ha-input
+                        .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute')}
+                        .value=${this._config.moving_animation_attribute || ''}
+                        .configValue=${'moving_animation_attribute'}
+                        .placeholder=${'activity'}
+                        @input=${this._valueChanged}
+                        .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_attribute_help')}
+                        .helperPersistent=${true}
+                      ></ha-input>
+                      <ha-input
+                        .label=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities')}
+                        .value=${(this._config.moving_animation_activities || []).join(', ')}
+                        .configValue=${'moving_animation_activities'}
+                        .placeholder=${'Automotive, Cycling, Walking, Driving'}
+                        @input=${this._valueChanged}
+                        .helper=${localize(this.hass, 'component.radar-card.editor.moving_animation_activities_help')}
+                        .helperPersistent=${true}
+                      ></ha-input>
+                    </div>
+                  `
+                : nothing
+            }
           </div>
         </div>
       </ha-card>
