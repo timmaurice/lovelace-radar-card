@@ -76,11 +76,16 @@ export function getAzimuth(lat1: number, lon1: number, lat2: number, lon2: numbe
  * @returns The formatted distance string.
  */
 export function formatDistance(distance: number, unit: string, options?: { removeIntegerDecimals?: boolean }): string {
-  if (unit === 'km' && distance < 1) {
-    return `${Math.round(distance * 1000)} m`;
+  // Decide on the rounded value, not the raw one. A nominal 1 km comes out of
+  // the haversine as 999.998 m, which is still below 1 - so the small-unit
+  // branch used to win and print "1000 m" where the reader expects "1.00 km".
+  if (unit === 'km') {
+    const metres = Math.round(distance * 1000);
+    if (metres < 1000) return `${metres} m`;
   }
-  if (unit === 'mi' && distance < 1) {
-    return `${Math.round(distance * 5280)} ft`;
+  if (unit === 'mi') {
+    const feet = Math.round(distance * 5280);
+    if (feet < 5280) return `${feet} ft`;
   }
 
   const formatted = distance.toFixed(2);
