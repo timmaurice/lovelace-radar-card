@@ -71,6 +71,19 @@ test.beforeAll(async () => {
         title: 'Skipped',
         cards: [{ ...common, title: 'Cannot be plotted', entities: [OK, MISSING, NO_COORDS, UNAVAILABLE] }],
       },
+      {
+        title: 'Markers',
+        cards: [
+          {
+            ...common,
+            title: 'Markers beyond the radar',
+            entities: [NEAR],
+            enable_markers: true,
+            auto_radar_max_distance: false,
+            radar_max_distance: 1,
+          },
+        ],
+      },
     ],
   });
 });
@@ -103,6 +116,43 @@ test.describe('Entities the radar cannot place', () => {
     await expect(card.locator('g.entity-group.out-of-range title')).toContainText("Beyond the radar's range");
     await expect(card.locator('.legend-item.out-of-range .legend-name')).toHaveText('E2E Far');
     await expect(card.locator('.legend-item.out-of-range ha-icon.legend-beyond-range')).toHaveCount(1);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  /**
+   * A marker is a path, not a circle, and `.entity-dot[d]` gives every path its
+   * own 0.5px hairline. The group's `stroke-width: 1.5` therefore never reached
+   * it, so a marker beyond the radar was outlined like an in-range one. Only a
+   * real browser resolves that cascade, which is why this lives here.
+   */
+  test('outlines a marker beyond the maximum as heavily as an entity', async ({ page, consoleErrors }) => {
+    // Markers live in the browser's local storage, so they are seeded there
+    // rather than through the websocket API.
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'radar-card-markers',
+        JSON.stringify([
+          { id: 'e2e-near-marker', name: 'E2E Marker Near', latitude: 52.0, longitude: 5.0073037 },
+          { id: 'e2e-far-marker', name: 'E2E Marker Far', latitude: 53.17, longitude: 5.0 },
+        ]),
+      );
+    });
+    await page.goto(`/${urlPath}/2`);
+
+    const card = page.locator('radar-card');
+    await expect(card.locator('ha-card')).toBeVisible({ timeout: 60_000 });
+    // The near tracker, plus both markers.
+    await expect(card.locator('g.entity-group')).toHaveCount(3);
+    await expect(card.locator('g.entity-group.out-of-range')).toHaveCount(1);
+
+    const strokeWidthOf = (selector: string) =>
+      card.locator(selector).evaluate((el) => window.getComputedStyle(el).strokeWidth);
+
+    // The group sets 1.5, and the path has to take it rather than keep its own
+    // 0.5px hairline.
+    expect(parseFloat(await strokeWidthOf('g.entity-group.out-of-range path.entity-dot'))).toBeCloseTo(1.5, 5);
+    // The in-range marker keeps the hairline that separates it from the chart.
+    expect(parseFloat(await strokeWidthOf('g.entity-group:not(.out-of-range) path.entity-dot'))).toBeCloseTo(0.5, 5);
     expect(consoleErrors).toEqual([]);
   });
 
