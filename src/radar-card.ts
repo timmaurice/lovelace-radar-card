@@ -157,14 +157,40 @@ export class RadarCard extends LitElement implements LovelaceCard {
     return document.createElement(EDITOR_ELEMENT_NAME) as LovelaceCardEditor;
   }
 
-  public static getStubConfig(): Record<string, unknown> {
+  /**
+   * The card picker renders the stub as a live preview, so a placeholder entity
+   * id nobody owns makes the preview read "No entities to show". Prefer a real
+   * locatable entity and keep the placeholder only for the case where there is
+   * genuinely nothing to plot.
+   */
+  public static getStubConfig(hass?: HomeAssistant): Record<string, unknown> {
+    const locatable = hass?.states
+      ? Object.keys(hass.states).find(
+          (entityId) =>
+            (entityId.startsWith('device_tracker.') || entityId.startsWith('person.')) &&
+            hass.states[entityId]?.attributes?.latitude != null &&
+            hass.states[entityId]?.attributes?.longitude != null,
+        )
+      : undefined;
+
     return {
-      entities: ['device_tracker.your_device'],
+      entities: [locatable ?? 'device_tracker.your_device'],
     };
   }
 
+  /** Sizing for Sections dashboards; without it the card gets the grid default. */
+  public getGridOptions(): { columns: number; rows: string; min_columns: number; min_rows: number } {
+    return { columns: 6, rows: 'auto', min_columns: 4, min_rows: 4 };
+  }
+
   public getCardSize(): number {
-    return 3;
+    const chartRows = 3;
+    // A legend beside the chart fits in the chart's own height; one below it
+    // does not, and a card with a dozen entities is much taller than the fixed
+    // 3 rows this used to claim.
+    const belowChart = (this._config?.legend_position ?? 'bottom') === 'bottom';
+    if (this._config?.show_legend === false || !belowChart) return chartRows;
+    return chartRows + Math.ceil((this._points.length + this._skipped.length) / 2);
   }
 
   private async _showTooltip(event: MouseEvent, point: RadarPoint, distanceUnit: string): Promise<void> {

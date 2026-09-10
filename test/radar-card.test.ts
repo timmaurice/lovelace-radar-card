@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../src/radar-card';
+import { RadarCard as RadarCardClass } from '../src/radar-card';
 import type { RadarCard, RadarMarker, RadarPoint } from '../src/radar-card';
 import { HaDialog, HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
@@ -1290,6 +1290,68 @@ describe('RadarCard', () => {
 
       const error = element.shadowRoot?.querySelector('.warning');
       expect(error?.textContent).toContain("Entity 'zone.nope' was not found.");
+    });
+  });
+
+  describe('Lovelace API surface', () => {
+    it('should pick a locatable entity for the card picker preview', () => {
+      hass.states['sensor.temperature'] = {
+        entity_id: 'sensor.temperature',
+        state: '21',
+        attributes: {},
+      } as HassEntity;
+      hass.states['device_tracker.no_gps'] = {
+        entity_id: 'device_tracker.no_gps',
+        state: 'home',
+        attributes: {},
+      } as HassEntity;
+      hass.states['person.tim'] = {
+        entity_id: 'person.tim',
+        state: 'home',
+        attributes: { latitude: 52.52, longitude: 13.41 },
+      } as HassEntity;
+
+      // The placeholder id nobody owns rendered the preview as "No entities to show".
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['person.tim'] });
+    });
+
+    it('should fall back to the placeholder when nothing can be located', () => {
+      expect(RadarCardClass.getStubConfig(hass)).toEqual({ entities: ['device_tracker.your_device'] });
+      expect(RadarCardClass.getStubConfig()).toEqual({ entities: ['device_tracker.your_device'] });
+    });
+
+    it('should offer grid options so a sections dashboard can size the card', () => {
+      element = document.createElement('radar-card') as RadarCard;
+      expect(element.getGridOptions()).toEqual({ columns: 6, rows: 'auto', min_columns: 4, min_rows: 4 });
+    });
+
+    it('should grow its card size with a legend below the chart', async () => {
+      for (const index of [0, 1, 2, 3]) {
+        hass.states[`device_tracker.size_${index}`] = {
+          entity_id: `device_tracker.size_${index}`,
+          state: 'not_home',
+          attributes: { latitude: 52.53 + index / 100, longitude: 13.41, friendly_name: `Size ${index}` },
+        } as HassEntity;
+      }
+      const entities = [0, 1, 2, 3].map((index) => `device_tracker.size_${index}`);
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      // Four entities wrap onto two legend rows below the 3-row chart.
+      expect(element.getCardSize()).toBe(5);
+
+      element.setConfig({ ...config, entities, show_legend: false });
+      await element.updateComplete;
+      expect(element.getCardSize()).toBe(3);
+
+      element.setConfig({ ...config, entities, legend_position: 'right' });
+      await element.updateComplete;
+      expect(element.getCardSize()).toBe(3);
     });
   });
 
