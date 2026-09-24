@@ -28,6 +28,9 @@ interface CustomWindow extends Window {
   loadCardHelpers?: () => Promise<LovelaceCardHelpers>;
 }
 
-(window as CustomWindow).loadCardHelpers = vi.fn().mockResolvedValue({
-  createCardElement: vi.fn().mockResolvedValue({ constructor: { getConfigElement: vi.fn() } }),
-});
+// Guarded like customCards above: a test file on the node environment has no window.
+if (typeof window !== 'undefined') {
+  (window as CustomWindow).loadCardHelpers = vi.fn().mockResolvedValue({
+    createCardElement: vi.fn().mockResolvedValue({ constructor: { getConfigElement: vi.fn() } }),
+  });
+}
