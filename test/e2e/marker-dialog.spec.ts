@@ -168,8 +168,8 @@ test.describe('The marker dialog in a real frontend', () => {
   });
 
   test('adds a marker at the centre from the round button', async ({ page, consoleErrors }) => {
-    // With nothing to plot the card shows its empty state and no button, so
-    // this starts from one marker that is already there.
+    // Starts from a marker that is already there, so the button floats over a
+    // drawn chart; the empty state has a test of its own below.
     const card = await openView(page, [MARKER]);
     const addButton = card.locator('ha-icon-button.add-marker-btn');
 
@@ -192,6 +192,28 @@ test.describe('The marker dialog in a real frontend', () => {
       expect.objectContaining({ id: MARKER.id }),
       expect.objectContaining({ latitude: 52.0, longitude: 5.0 }),
     ]);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test('creates the first marker from the empty state', async ({ page, consoleErrors }) => {
+    // The centre entity is the centre, not a plotted point, so with no marker
+    // yet nothing is on the radar. The button used to go with the chart, which
+    // left a markers-only card with no way to create its first marker.
+    const card = await openView(page, []);
+    await expect(card.locator('.no-entities')).toBeVisible();
+
+    await card
+      .locator('ha-icon-button.add-marker-btn')
+      .getByRole('button', { name: 'Add Marker at Center Point (Current Location)' })
+      .click();
+    const dialog = card.locator('ha-dialog');
+    await expect(dialog.locator('#ha-dialog-title')).toHaveText(/^\s*Marker /);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+
+    await expect(card.locator('ha-dialog')).toHaveCount(0);
+    await expect(card.locator('.no-entities')).toHaveCount(0);
+    await expect(card.locator('.legend-name')).toHaveText([/^Marker /]);
+    expect(await storedMarkers(page)).toEqual([expect.objectContaining({ latitude: 52.0, longitude: 5.0 })]);
     expect(consoleErrors).toEqual([]);
   });
 

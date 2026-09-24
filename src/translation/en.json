@@ -63,6 +63,7 @@
       "entity_not_found": "Radar-card: Entity '{entity}' was not found."
     },
     "no_entities": "No entities to show",
+    "no_entities_add_marker": "No entities to show. Use the button to add a marker at the center point.",
     "beyond_range": "Beyond the radar's range",
     "skipped": {
       "title": "Not shown",

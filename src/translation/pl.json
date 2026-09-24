@@ -63,6 +63,7 @@
       "entity_not_found": "Radar-card: Nie znaleziono encji '{entity}'."
     },
     "no_entities": "Brak encji do wyświetlenia",
+    "no_entities_add_marker": "Brak encji do wyświetlenia. Użyj przycisku, aby dodać marker w punkcie centralnym.",
     "beyond_range": "Poza zasięgiem radaru",
     "skipped": {
       "title": "Nie pokazano",

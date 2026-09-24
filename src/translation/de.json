@@ -63,6 +63,7 @@
       "entity_not_found": "Radar-card: Entität '{entity}' wurde nicht gefunden."
     },
     "no_entities": "Keine Entitäten zum Anzeigen",
+    "no_entities_add_marker": "Keine Entitäten zum Anzeigen. Mit der Schaltfläche fügen Sie eine Markierung am Mittelpunkt hinzu.",
     "beyond_range": "Außerhalb der Radar-Reichweite",
     "skipped": {
       "title": "Nicht angezeigt",

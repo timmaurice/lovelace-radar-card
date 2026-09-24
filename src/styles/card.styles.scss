@@ -109,6 +109,21 @@ ha-icon-button.add-marker-btn {
   text-align: center;
 }
 
+/*
+ * Nothing is plotted, so there is no chart for the add button to float over:
+ * it sits under the hint instead of in the chart's corner.
+ */
+.card-content.empty {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+
+  ha-icon-button.add-marker-btn {
+    margin-bottom: 16px;
+    position: static;
+  }
+}
+
 @keyframes pulse {
   0% {
     opacity: 0.7;

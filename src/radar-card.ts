@@ -423,11 +423,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   private _addMarker(): void {
-    if (!this._config.center_entity) return;
-    // A gesture, not a render: `willUpdate` validates and reports on the centre
-    // entity, so raising a card-wide error from here would only leave a banner
-    // standing that nothing clears.
-    const centerCoords = this._getCoordsFromState(this._config.center_entity, false);
+    // A gesture, not a render: `willUpdate` validates and reports on the centre,
+    // so raising a card-wide error from here would only leave a banner standing
+    // that nothing clears.
+    const centerCoords = this._getCenterCoords(false);
     if (!centerCoords) return;
 
     const now = new Date();
@@ -1022,6 +1021,19 @@ export class RadarCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private _renderAddMarkerButton(animate: boolean): TemplateResult {
+    const duration = this._config.animation_duration ?? 750;
+    const style = animate ? `animation-duration: ${duration}ms; animation-delay: ${duration * 0.25}ms` : '';
+    return html`<ha-icon-button
+      class="add-marker-btn ${animate ? 'fade-in' : ''}"
+      style=${style}
+      @click=${this._addMarker}
+      .label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
+    >
+      <ha-icon icon="mdi:map-marker-plus"></ha-icon>
+    </ha-icon-button>`;
+  }
+
   private _renderMarkerDialog(): TemplateResult {
     if (!this._editingMarker) {
       return html``;
@@ -1087,36 +1099,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    let centerLat: number | undefined;
-    let centerLon: number | undefined;
-
-    const centerEntityCoords =
-      this._config.center_entity && typeof this._config.center_entity === 'string'
-        ? this._getCoordsFromState(this._config.center_entity)
-        : null;
-
-    const zoneCoords =
-      this._config.location_zone_entity && typeof this._config.location_zone_entity === 'string'
-        ? this._getCoordsFromState(this._config.location_zone_entity)
-        : null;
-
-    if (centerEntityCoords) {
-      centerLat = centerEntityCoords.lat;
-      centerLon = centerEntityCoords.lon;
-    } else if (zoneCoords) {
-      centerLat = zoneCoords.lat;
-      centerLon = zoneCoords.lon;
-    } else if (this._config.center_latitude != null && this._config.center_longitude != null) {
-      centerLat = this._config.center_latitude;
-      centerLon = this._config.center_longitude;
-    } else {
-      centerLat = this.hass.config.latitude;
-      centerLon = this.hass.config.longitude;
-    }
-
-    if (centerLat === undefined || centerLon === undefined) return;
-
-    const home = { lat: centerLat, lon: centerLon };
+    const home = this._getCenterCoords();
+    if (!home) return;
 
     const normalizedEntities = this._config.entities.map((entity) =>
       typeof entity === 'string' ? { entity } : entity,
@@ -1249,6 +1233,29 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   /**
+   * The point the radar is drawn around: the centre entity, else the centre
+   * zone, else the manual coordinates, else Home Assistant's home location.
+   * A configured entity or zone that cannot be located is no centre at all -
+   * falling through to home would silently re-centre the radar somewhere the
+   * config never asked for.
+   *
+   * One resolver for the validation, the chart and a new marker. The marker
+   * used to read `center_entity` on its own, so it had no coordinates on any
+   * card centred on a zone or on home, and the button was hidden there.
+   */
+  private _getCenterCoords(reportError = true): { lat: number; lon: number } | null {
+    if (this._config.center_entity) return this._getCoordsFromState(this._config.center_entity, reportError);
+    if (this._config.location_zone_entity) {
+      return this._getCoordsFromState(this._config.location_zone_entity, reportError);
+    }
+    if (this._config.center_latitude != null && this._config.center_longitude != null) {
+      return { lat: this._config.center_latitude, lon: this._config.center_longitude };
+    }
+    const { latitude, longitude } = this.hass.config;
+    return latitude != null && longitude != null ? { lat: latitude, lon: longitude } : null;
+  }
+
+  /**
    * `reportError` exists because only `willUpdate` clears `_error` before it
    * runs. A caller outside that reset - a user gesture, say - would otherwise
    * leave a card-wide error banner behind that nothing takes down again, for a
@@ -1292,13 +1299,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
       `;
     }
 
+    // Nothing plotted used to mean no button either, so the first marker of a
+    // markers-only card - or of one whose entities are all away - could not be
+    // created at all. The centre does not depend on what is plotted, so the
+    // button and its dialog are offered here as well.
+    const markersEnabled = this._config.enable_markers === true;
+
     if (this._points.length === 0) {
+      const hint = markersEnabled ? 'no_entities_add_marker' : 'no_entities';
       return html`
         <ha-card .header=${this._config.title}>
-          <div class="card-content">
-            <div class="no-entities">${localize(this.hass, 'component.radar-card.card.no_entities')}</div>
+          <div class="card-content empty">
+            <div class="no-entities">${localize(this.hass, `component.radar-card.card.${hint}`)}</div>
+            ${markersEnabled ? this._renderAddMarkerButton(false) : nothing}
           </div>
-          ${this._renderSkippedEntities()}
+          ${this._renderSkippedEntities()} ${this._renderMarkerDialog()}
         </ha-card>
       `;
     }
@@ -1313,10 +1328,6 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const isBesideLegend = ['left', 'right'].includes(legendPosition);
     const isBottomLegend = legendPosition === 'bottom';
 
-    const showAddMarkerButton = this._config.enable_markers && this._config.center_entity;
-    const duration = this._config.animation_duration ?? 750;
-    const style = shouldAnimateLegend ? `animation-duration: ${duration}ms; animation-delay: ${duration * 0.25}ms` : '';
-
     const radarContainer = html`
       <div class="radar-chart-container" @mousemove=${this._moveTooltip}>
         <div class="radar-chart"></div>
@@ -1327,18 +1338,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
               </div>`
             : ''
         }
-        ${
-          showAddMarkerButton
-            ? html`<ha-icon-button
-                class="add-marker-btn ${shouldAnimateLegend ? 'fade-in' : ''}"
-                style=${style}
-                @click=${this._addMarker}
-                .label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
-              >
-                <ha-icon icon="mdi:map-marker-plus"></ha-icon>
-              </ha-icon-button>`
-            : nothing
-        }
+        ${markersEnabled ? this._renderAddMarkerButton(shouldAnimateLegend) : nothing}
       </div>
     `;
 
@@ -1396,32 +1396,10 @@ export class RadarCard extends LitElement implements LovelaceCard {
       }
 
       this._error = null;
-      let hasValidCenter = false;
-
-      if (this._config.center_entity) {
-        const coords = this._getCoordsFromState(this._config.center_entity);
-        if (coords) {
-          hasValidCenter = true;
-        } else {
-          // _getCoordsFromState already set this._error
-          return;
-        }
-      } else if (this._config.location_zone_entity) {
-        const coords = this._getCoordsFromState(this._config.location_zone_entity);
-        if (coords) {
-          hasValidCenter = true;
-        } else {
-          // _getCoordsFromState already set this._error
-          return;
-        }
-      } else if (this._config.center_latitude != null && this._config.center_longitude != null) {
-        hasValidCenter = true;
-      } else if (this.hass.config?.latitude != null && this.hass.config?.longitude != null) {
-        hasValidCenter = true;
-      }
-
-      if (!hasValidCenter) {
-        this._error = localize(this.hass, 'component.radar-card.card.error.no_home_location');
+      if (!this._getCenterCoords()) {
+        // A centre entity or zone that fails has already said which one and why;
+        // only the Home Assistant fallback is left without a message of its own.
+        this._error ??= localize(this.hass, 'component.radar-card.card.error.no_home_location');
         return;
       }
 

@@ -177,6 +177,7 @@ describe('RadarCard', () => {
       const noEntities = element.shadowRoot?.querySelector('.no-entities');
       expect(noEntities).not.toBeNull();
       expect(noEntities?.textContent).toBe('No entities to show');
+      expect(element.shadowRoot?.querySelector('.add-marker-btn')).toBeNull();
     });
   });
 
@@ -913,21 +914,77 @@ describe('RadarCard', () => {
       expect(addButton).not.toBeNull();
     });
 
-    it('should not show the add marker button when enabled in static mode', async () => {
+    // The card's own lifecycle order: Home Assistant calls setConfig first and
+    // assigns hass only afterwards.
+    const mountCard = async (extra: Partial<RadarCardConfig>): Promise<void> => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);
+      element.setConfig({ ...config, ...extra });
       element.hass = hass;
-      element.setConfig({
-        ...config,
-        type: 'custom:radar-card', // Static mode (no center_entity)
-        entities: [],
-        enable_markers: true,
-        animation_enabled: false,
-      });
       await element.updateComplete;
+      await vi.runAllTimersAsync();
+    };
 
-      const addButton = element.shadowRoot?.querySelector('ha-icon-button.add-marker-btn');
-      expect(addButton).toBeNull();
+    const addButton = (): HTMLElement | null =>
+      element.shadowRoot!.querySelector<HTMLElement>('ha-icon-button.add-marker-btn');
+
+    const addMarkerThroughDialog = async (): Promise<RadarMarker[]> => {
+      addButton()!.click();
+      await element.updateComplete;
+      element.shadowRoot!.querySelector<HTMLElement>('ha-dialog-footer ha-button[slot="primaryAction"]')!.click();
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+      return JSON.parse(localStorageMock.getItem('radar-card-markers') || '[]');
+    };
+
+    it('should offer the add marker button when nothing is plotted yet', async () => {
+      // A markers-only card: the centre entity is the centre, not a plotted
+      // point, so the radar is empty until the first marker exists.
+      await mountCard({ entities: [], enable_markers: true });
+
+      expect(element.shadowRoot!.querySelector('.no-entities')?.textContent).toBe('no_entities_add_marker');
+      expect(addButton()).not.toBeNull();
+    });
+
+    it('should create the first marker from the empty state, at the centre entity', async () => {
+      await mountCard({ entities: [], enable_markers: true });
+
+      const stored = await addMarkerThroughDialog();
+
+      expect(stored).toHaveLength(1);
+      expect(stored[0]).toMatchObject({ latitude: 52.52, longitude: 13.41 });
+      expect(element.shadowRoot!.querySelector('.no-entities')).toBeNull();
+      expect(element.shadowRoot!.querySelector('path.entity-dot')).not.toBeNull();
+    });
+
+    it('should offer the add marker button when every entity is skipped', async () => {
+      await mountCard({ entities: ['device_tracker.not_there'], enable_markers: true });
+
+      expect(element.shadowRoot!.querySelector('.skipped-entities')?.textContent).toContain('not_found');
+      expect(addButton()).not.toBeNull();
+    });
+
+    it('should place a new marker at the zone a static radar is centred on', async () => {
+      hass.states['zone.cabin'] = {
+        entity_id: 'zone.cabin',
+        state: '0',
+        attributes: { latitude: 47.42, longitude: 10.98, radius: 100, friendly_name: 'Cabin' },
+      } as HassEntity;
+      delete config.center_entity;
+
+      await mountCard({ entities: [], enable_markers: true, location_zone_entity: 'zone.cabin' });
+      const stored = await addMarkerThroughDialog();
+
+      expect(stored[0]).toMatchObject({ latitude: 47.42, longitude: 10.98 });
+    });
+
+    it("should place a new marker at Home Assistant's home when nothing else sets the centre", async () => {
+      delete config.center_entity;
+
+      await mountCard({ entities: [], enable_markers: true });
+      const stored = await addMarkerThroughDialog();
+
+      expect(stored[0]).toMatchObject({ latitude: hass.config.latitude, longitude: hass.config.longitude });
     });
 
     it('should open a dialog when the add marker button is clicked', async () => {
@@ -1540,6 +1597,20 @@ describe('RadarCard', () => {
 
       const error = element.shadowRoot?.querySelector('.warning');
       expect(error?.textContent).toContain("Entity 'zone.nope' was not found.");
+    });
+
+    it('should not report a centre zone that a centre entity overrides', async () => {
+      hass.states['device_tracker.center'] = {
+        entity_id: 'device_tracker.center',
+        state: 'not_home',
+        attributes: { latitude: 52.52, longitude: 13.4, friendly_name: 'Center' },
+      } as HassEntity;
+      // The README gives center_entity priority, so the zone is never the centre
+      // here - and a zone that is not the centre is nothing to raise an error on.
+      await setup(['device_tracker.ok'], { center_entity: 'device_tracker.center', location_zone_entity: 'zone.nope' });
+
+      expect(element.shadowRoot?.querySelector('.warning')).toBeNull();
+      expect(element.shadowRoot?.querySelector('.radar-chart svg')).not.toBeNull();
     });
   });
 

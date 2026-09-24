@@ -63,6 +63,7 @@
       "entity_not_found": "Radar-card: L'entité '{entity}' est introuvable."
     },
     "no_entities": "Aucune entité à afficher",
+    "no_entities_add_marker": "Aucune entité à afficher. Utilisez le bouton pour ajouter un marqueur au point central.",
     "beyond_range": "Au-delà de la portée du radar",
     "skipped": {
       "title": "Non affiché",
