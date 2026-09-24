@@ -172,10 +172,17 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
-  private _handleCenterModeChange(ev: Event): void {
-    // The ha-form-radio component holds the value in the target, not the event detail
-    const target = ev.target as HTMLInputElement;
-    const newMode = target.value;
+  /**
+   * The select selector in list mode draws the radios - HA decides which radio
+   * element that is, so the editor does not break when HA replaces it again, as
+   * it did when `ha-radio` was removed in 2026.6.
+   */
+  private _handleCenterModeChange(ev: CustomEvent<{ value: string }>): void {
+    ev.stopPropagation();
+    const newMode = ev.detail.value;
+    if (newMode !== 'static' && newMode !== 'moving') return;
+    const current = 'center_entity' in this._config ? 'moving' : 'static';
+    if (newMode === current) return;
     const newConfig: RadarCardConfig = { ...this._config };
 
     if (newMode === 'static') {
@@ -598,16 +605,27 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                   : nothing
               }
               <div class="option-row">
-                <ha-form-radio .name=${'centerMode'} .value=${centerMode} @change=${this._handleCenterModeChange}>
-                  <label class="radio-label">
-                    <ha-radio .value=${'static'} .checked=${centerMode === 'static'}></ha-radio>
-                    <span>${localize(this.hass, 'component.radar-card.editor.center_modes.static')}</span>
-                  </label>
-                  <label class="radio-label">
-                    <ha-radio .value=${'moving'} .checked=${centerMode === 'moving'}></ha-radio>
-                    <span>${localize(this.hass, 'component.radar-card.editor.center_modes.moving')}</span>
-                  </label>
-                </ha-form-radio>
+                <ha-selector
+                  class="center-mode"
+                  .hass=${this.hass}
+                  .selector=${{
+                    select: {
+                      mode: 'list',
+                      options: [
+                        {
+                          value: 'static',
+                          label: localize(this.hass, 'component.radar-card.editor.center_modes.static'),
+                        },
+                        {
+                          value: 'moving',
+                          label: localize(this.hass, 'component.radar-card.editor.center_modes.moving'),
+                        },
+                      ],
+                    },
+                  }}
+                  .value=${centerMode}
+                  @value-changed=${this._handleCenterModeChange}
+                ></ha-selector>
               </div>
               ${
                 centerMode === 'static'

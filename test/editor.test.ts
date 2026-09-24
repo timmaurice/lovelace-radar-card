@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../src/editor';
 import type { RadarCardEditor } from '../src/editor';
 import { HomeAssistant, RadarCardConfig } from '../src/types';
+import { removedTags } from './ha-elements';
 
 // Mock the localize function
 vi.mock('../src/localize', () => ({
@@ -122,6 +123,72 @@ describe('RadarCardEditor', () => {
     expect(newConfig.show_legend).toBe(false);
     expect(newConfig.legend_position).toBeUndefined();
     expect(newConfig.legend_show_distance).toBeUndefined();
+  });
+
+  describe('Centre mode', () => {
+    interface SelectSelectorEl extends HTMLElement {
+      selector: { select: { mode: string; options: { value: string; label: string }[] } };
+      value: string;
+    }
+
+    function centerModeSelector(): SelectSelectorEl {
+      const el = element.shadowRoot!.querySelector<SelectSelectorEl>('ha-selector.center-mode');
+      if (!el) throw new Error('No centre mode selector rendered');
+      return el;
+    }
+
+    /** What `ha-selector` fires when a radio is picked: `value-changed` with the value. */
+    function pick(value: string): RadarCardConfig {
+      const spy = vi.fn();
+      element.addEventListener('config-changed', spy);
+      centerModeSelector().dispatchEvent(
+        new CustomEvent('value-changed', { detail: { value }, bubbles: true, composed: true }),
+      );
+      element.removeEventListener('config-changed', spy);
+      expect(spy).toHaveBeenCalledTimes(1);
+      return (spy.mock.calls[0][0] as CustomEvent).detail.config as RadarCardConfig;
+    }
+
+    it('offers static and moving as a list select selector, so HA draws the radios', async () => {
+      element.setConfig({ type: 'custom:radar-card', entities: [], location_zone_entity: 'zone.home' });
+      await element.updateComplete;
+
+      const selector = centerModeSelector();
+      expect(selector.selector.select.mode).toBe('list');
+      expect(selector.selector.select.options).toEqual([
+        { value: 'static', label: 'static' },
+        { value: 'moving', label: 'moving' },
+      ]);
+      expect(selector.value).toBe('static');
+    });
+
+    it('renders no element HA has removed from its frontend', async () => {
+      element.setConfig({ type: 'custom:radar-card', entities: [] });
+      await element.updateComplete;
+
+      expect(removedTags(element.shadowRoot!)).toEqual([]);
+    });
+
+    it('switches to moving and drops the static settings', async () => {
+      element.setConfig({ type: 'custom:radar-card', entities: [], location_zone_entity: 'zone.home' });
+      await element.updateComplete;
+
+      const newConfig = pick('moving');
+      expect(newConfig.center_entity).toBe('');
+      expect(newConfig).not.toHaveProperty('location_zone_entity');
+      await element.updateComplete;
+      expect(centerModeSelector().value).toBe('moving');
+    });
+
+    it('switches back to static and drops the centre entity', async () => {
+      element.setConfig({ type: 'custom:radar-card', entities: [], center_entity: 'device_tracker.me' });
+      await element.updateComplete;
+      expect(centerModeSelector().value).toBe('moving');
+
+      const newConfig = pick('static');
+      expect(newConfig).not.toHaveProperty('center_entity');
+      expect(newConfig.location_zone_entity).toBe('');
+    });
   });
 
   describe('Duplicate resource registration', () => {
