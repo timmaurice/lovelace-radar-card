@@ -239,17 +239,12 @@ ha-icon-button.add-marker-btn {
     gap: 4px;
 
     .edit-marker-icon {
-      --mdc-icon-button-size: 16px;
+      /* ha-icon-button's own size tokens; the --mdc-icon-button-* ones are gone. */
+      --ha-icon-button-size: 16px;
+      --ha-icon-button-padding-inline: 0;
+      /* ha-icon still reads this one. */
       --mdc-icon-size: 12px;
       color: var(--secondary-text-color);
-      height: 16px;
-      padding: 0px;
-      width: 16px;
-
-      ha-icon {
-        font-size: 12px;
-        transform: translate(0, -2px);
-      }
     }
   }
 

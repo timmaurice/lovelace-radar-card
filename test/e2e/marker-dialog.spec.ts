@@ -119,6 +119,21 @@ test.describe('The marker dialog in a real frontend', () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("puts the legend's edit button inside its row", async ({ page }) => {
+    const card = await openView(page, [MARKER]);
+    const edit = card.locator('ha-icon-button.edit-marker-icon');
+    const row = (await card.locator('.legend-item').first().boundingBox())!;
+
+    // ha-icon-button is sized by --ha-icon-button-size. Left at its 48px default
+    // inside a 16px host, the pencil was drawn centred in the overflow, below
+    // and to the right of the name it belongs to.
+    const inner = (await edit.locator('ha-button').boundingBox())!;
+    const icon = (await edit.locator('ha-icon').boundingBox())!;
+    expect(inner.width).toBeLessThanOrEqual(24);
+    expect(icon.y).toBeGreaterThanOrEqual(row.y - 2);
+    expect(icon.y + icon.height).toBeLessThanOrEqual(row.y + row.height + 2);
+  });
+
   test('saves a new name and colour', async ({ page }) => {
     const card = await openView(page, [MARKER]);
     const dialog = await openEditDialog(card);

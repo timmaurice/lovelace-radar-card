@@ -976,7 +976,6 @@ export class RadarCard extends LitElement implements LovelaceCard {
               ${
                 point.isMarker
                   ? html`<ha-icon-button
-                      mini
                       class="edit-marker-icon"
                       .label=${localize(this.hass, 'component.radar-card.card.dialog.edit_marker')}
                       @click=${(e: Event) => {
