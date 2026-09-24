@@ -39,10 +39,18 @@
   }
 }
 
-ha-fab.add-marker-btn {
-  --mdc-theme-primary: var(--secondary-text-color) !important;
-  --mdc-theme-secondary: var(--secondary-text-color) !important;
+/*
+ * A floating round button, as ha-fab drew it before HA removed ha-fab in 2026.5.
+ * ha-icon-button brings the round shape, the focus ring and the label; the fill
+ * is ours.
+ */
+ha-icon-button.add-marker-btn {
+  --ha-icon-button-size: 40px;
+  background-color: var(--secondary-text-color);
+  border-radius: 50%;
   bottom: 8px;
+  box-shadow: var(--ha-card-box-shadow, 0 2px 4px rgba(0, 0, 0, 0.3));
+  color: var(--card-background-color, var(--primary-background-color));
   position: absolute;
   right: 8px;
   z-index: 1;

@@ -3,10 +3,11 @@ import { test, expect } from './fixtures/hass';
 import { removeState, setState, useDashboard } from './helpers/homeassistant';
 
 /**
- * The marker dialog is built from HA's own elements - `ha-dialog`,
- * `ha-dialog-footer`, `ha-input`, `ha-button` - and those change under the card.
- * HA 2026.3 swapped `ha-dialog` for a Web Awesome dialog with other slots and no
- * `heading`, 2026.5 removed `ha-textfield`, and the dialog lost its title, its
+ * The marker dialog and the button that opens it are built from HA's own
+ * elements - `ha-dialog`, `ha-dialog-footer`, `ha-input`, `ha-button`,
+ * `ha-icon-button` - and those change under the card. HA 2026.3 swapped
+ * `ha-dialog` for a Web Awesome dialog with other slots and no `heading`, 2026.5
+ * removed `ha-textfield` and `ha-fab`, and the dialog lost its title, its
  * buttons and then its fields without a single error in the console. Only the
  * real frontend can say whether the markup still lands anywhere, so this spec
  * asks it.
@@ -149,6 +150,34 @@ test.describe('The marker dialog in a real frontend', () => {
 
     await expect(card.locator('.legend-name')).toHaveText(['E2E Marker']);
     expect(await storedMarkers(page)).toEqual([expect.objectContaining({ name: 'E2E Marker' })]);
+  });
+
+  test('adds a marker at the centre from the round button', async ({ page, consoleErrors }) => {
+    // With nothing to plot the card shows its empty state and no button, so
+    // this starts from one marker that is already there.
+    const card = await openView(page, [MARKER]);
+    const addButton = card.locator('ha-icon-button.add-marker-btn');
+
+    // The label is what screen readers and the tooltip get.
+    const button = addButton.getByRole('button', { name: 'Add Marker at Center Point (Current Location)' });
+    await expect(button).toBeVisible();
+    const box = (await addButton.boundingBox())!;
+    expect(Math.round(box.width)).toBe(40);
+    expect(Math.round(box.height)).toBe(40);
+    expect(await undefinedTags(card)).toEqual([]);
+
+    await button.click();
+    const dialog = card.locator('ha-dialog');
+    await expect(dialog.locator('#ha-dialog-title')).toHaveText(/^\s*Marker /);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+
+    await expect(card.locator('ha-dialog')).toHaveCount(0);
+    await expect(card.locator('.legend-name')).toHaveText(['E2E Marker', /^Marker /]);
+    expect(await storedMarkers(page)).toEqual([
+      expect.objectContaining({ id: MARKER.id }),
+      expect.objectContaining({ latitude: 52.0, longitude: 5.0 }),
+    ]);
+    expect(consoleErrors).toEqual([]);
   });
 
   test('deletes the marker', async ({ page }) => {

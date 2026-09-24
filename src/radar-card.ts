@@ -1327,17 +1327,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
         }
         ${
           showAddMarkerButton
-            ? html`<ha-fab
-                mini
+            ? html`<ha-icon-button
                 class="add-marker-btn ${shouldAnimateLegend ? 'fade-in' : ''}"
                 style=${style}
                 @click=${this._addMarker}
-                title=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
-                role="button"
-                aria-label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
+                .label=${localize(this.hass, 'component.radar-card.card.dialog.add_marker_button')}
               >
-                <ha-icon slot="icon" icon="mdi:map-marker-plus"></ha-icon>
-              </ha-fab>`
+                <ha-icon icon="mdi:map-marker-plus"></ha-icon>
+              </ha-icon-button>`
             : nothing
         }
       </div>

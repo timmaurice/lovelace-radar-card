@@ -897,8 +897,8 @@ describe('RadarCard', () => {
       });
       await element.updateComplete;
 
-      const fab = element.shadowRoot?.querySelector('ha-fab.add-marker-btn');
-      expect(fab).toBeNull();
+      const addButton = element.shadowRoot?.querySelector('ha-icon-button.add-marker-btn');
+      expect(addButton).toBeNull();
     });
 
     it('should show the add marker button when enabled in moving mode', async () => {
@@ -909,8 +909,8 @@ describe('RadarCard', () => {
       await element.updateComplete;
       await vi.runAllTimersAsync(); // Ensure all async rendering is done
 
-      const fab = element.shadowRoot?.querySelector('ha-fab.add-marker-btn');
-      expect(fab).not.toBeNull();
+      const addButton = element.shadowRoot?.querySelector('ha-icon-button.add-marker-btn');
+      expect(addButton).not.toBeNull();
     });
 
     it('should not show the add marker button when enabled in static mode', async () => {
@@ -926,8 +926,8 @@ describe('RadarCard', () => {
       });
       await element.updateComplete;
 
-      const fab = element.shadowRoot?.querySelector('ha-fab.add-marker-btn');
-      expect(fab).toBeNull();
+      const addButton = element.shadowRoot?.querySelector('ha-icon-button.add-marker-btn');
+      expect(addButton).toBeNull();
     });
 
     it('should open a dialog when the add marker button is clicked', async () => {
@@ -938,8 +938,8 @@ describe('RadarCard', () => {
       await element.updateComplete;
       await vi.runAllTimersAsync(); // Ensure all async rendering is done
 
-      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
-      fab?.click();
+      const addButton = element.shadowRoot?.querySelector<HTMLElement>('ha-icon-button.add-marker-btn');
+      addButton?.click();
       await element.updateComplete;
 
       const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
@@ -947,6 +947,38 @@ describe('RadarCard', () => {
       // The default name comes from the translations now, not from a hard-coded
       // English string, so the mock's key stand-in is what lands in the title.
       expect(dialog?.headerTitle).toContain('marker_default_name');
+    });
+
+    it('draws the add marker button with ha-icon-button, the way that element takes it', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
+      await element.updateComplete;
+
+      const addButton = element.shadowRoot!.querySelector<HTMLElement & { label?: string }>(
+        'ha-icon-button.add-marker-btn',
+      )!;
+      // ha-icon-button turns `label` into the inner button's aria-label and
+      // tooltip, and takes its icon in the default slot. ha-fab's `icon` slot
+      // does not exist there.
+      expect(addButton.label).toBe('add_marker_button');
+      expect(unslottedChildren(addButton)).toEqual([]);
+      expect(addButton.querySelector('ha-icon')?.getAttribute('icon')).toBe('mdi:map-marker-plus');
+    });
+
+    it('renders no element HA has removed from its frontend, with markers on', async () => {
+      localStorageMock.setItem(
+        'radar-card-markers',
+        JSON.stringify([{ id: '1', name: 'Marker', latitude: 52.53, longitude: 13.42 }]),
+      );
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.center_device'], enable_markers: true });
+      await element.updateComplete;
+
+      expect(removedTags(element.shadowRoot!)).toEqual([]);
     });
 
     it('should not leave an error banner behind when the gesture finds no centre', async () => {
@@ -963,8 +995,8 @@ describe('RadarCard', () => {
       // down again.
       delete hass.states['device_tracker.center_device'];
 
-      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
-      fab?.click();
+      const addButton = element.shadowRoot?.querySelector<HTMLElement>('ha-icon-button.add-marker-btn');
+      addButton?.click();
       await element.updateComplete;
       await vi.runAllTimersAsync();
 
@@ -982,8 +1014,8 @@ describe('RadarCard', () => {
       await vi.runAllTimersAsync(); // Ensure all async rendering is done
 
       // Open and save dialog
-      const fab = element.shadowRoot?.querySelector<HTMLElement>('ha-fab.add-marker-btn');
-      fab?.click();
+      const addButton = element.shadowRoot?.querySelector<HTMLElement>('ha-icon-button.add-marker-btn');
+      addButton?.click();
       await element.updateComplete;
 
       const saveButton = element.shadowRoot?.querySelector<HTMLElement>(

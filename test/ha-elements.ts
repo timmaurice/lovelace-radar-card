@@ -13,6 +13,7 @@
  * - `src/components/ha-dialog.ts`
  * - `src/components/ha-dialog-footer.ts`
  * - `src/components/input/ha-input.ts` (with `wa-input-mixin.ts`)
+ * - `src/components/ha-icon-button.ts`
  *
  * This is a second model of HA's element set and drifts when HA moves. The
  * end-to-end suite (`test/e2e/marker-dialog.spec.ts`) checks the same contract
@@ -109,7 +110,19 @@ class HaInputStandIn extends HTMLElement {
   }
 }
 
+class HaIconButtonStandIn extends HTMLElement {
+  public label?: string;
+  public path?: string;
+
+  constructor() {
+    super();
+    // Only a default slot, for an `ha-icon` when no `path` is given.
+    this.attachShadow({ mode: 'open' }).innerHTML = `<button><span><slot></slot></span></button>`;
+  }
+}
+
 export function defineHaElementStandIns(): void {
+  if (!customElements.get('ha-icon-button')) customElements.define('ha-icon-button', HaIconButtonStandIn);
   if (!customElements.get('ha-input')) customElements.define('ha-input', HaInputStandIn);
   if (!customElements.get('ha-dialog')) customElements.define('ha-dialog', HaDialogStandIn);
   if (!customElements.get('ha-dialog-footer')) customElements.define('ha-dialog-footer', HaDialogFooterStandIn);
