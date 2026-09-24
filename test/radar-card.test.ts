@@ -4,6 +4,10 @@ import type { RadarCard, RadarMarker, RadarPoint } from '../src/radar-card';
 import { HaDialog, HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
 import { handleAction } from 'custom-card-helpers';
+import { childrenMatching, defineHaElementStandIns, removedTags, unslottedChildren } from './ha-elements';
+
+// The marker dialog is only meaningful against the slots HA's dialog really has.
+defineHaElementStandIns();
 
 // Mock the localize function
 vi.mock('../src/localize', () => ({
@@ -941,8 +945,8 @@ describe('RadarCard', () => {
       const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
       expect(dialog).not.toBeNull();
       // The default name comes from the translations now, not from a hard-coded
-      // English string, so the mock's key stand-in is what lands in the heading.
-      expect(dialog?.heading).toContain('marker_default_name');
+      // English string, so the mock's key stand-in is what lands in the title.
+      expect(dialog?.headerTitle).toContain('marker_default_name');
     });
 
     it('should not leave an error banner behind when the gesture finds no centre', async () => {
@@ -982,7 +986,9 @@ describe('RadarCard', () => {
       fab?.click();
       await element.updateComplete;
 
-      const saveButton = element.shadowRoot?.querySelector<HTMLElement>('mwc-button[slot="primaryAction"]');
+      const saveButton = element.shadowRoot?.querySelector<HTMLElement>(
+        'ha-dialog-footer ha-button[slot="primaryAction"]',
+      );
       saveButton?.click();
       await element.updateComplete;
 
@@ -1040,7 +1046,112 @@ describe('RadarCard', () => {
 
       const dialog = element.shadowRoot?.querySelector<HaDialog>('ha-dialog');
       expect(dialog).not.toBeNull();
-      expect(dialog?.heading).toBe('Editable Marker');
+      expect(dialog?.headerTitle).toBe('Editable Marker');
+    });
+
+    describe('Marker dialog against the ha-dialog API', () => {
+      const marker: RadarMarker = {
+        id: '1',
+        name: 'Editable Marker',
+        latitude: 52.53,
+        longitude: 13.42,
+        color: '#123456',
+      };
+
+      async function openDialog(): Promise<HaDialog> {
+        localStorageMock.setItem('radar-card-markers', JSON.stringify([marker]));
+        element = document.createElement('radar-card') as RadarCard;
+        document.body.appendChild(element);
+        element.hass = hass;
+        element.setConfig({ ...config, enable_markers: true });
+        await element.updateComplete;
+
+        const markerGroup = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+        markerGroup?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await element.updateComplete;
+        return element.shadowRoot!.querySelector<HaDialog>('ha-dialog')!;
+      }
+
+      it('puts the title in headerTitle, not in the mwc-era heading', async () => {
+        const dialog = await openDialog();
+
+        expect(dialog.open).toBe(true);
+        expect(dialog.headerTitle).toBe('Editable Marker');
+        expect(dialog).not.toHaveProperty('heading');
+      });
+
+      it('gives every child of the dialog a slot the dialog really has', async () => {
+        const dialog = await openDialog();
+
+        // A child aimed at a slot the dialog does not render is not shown at all.
+        // That is what happened to the buttons in `primaryAction`/`secondaryAction`.
+        expect(unslottedChildren(dialog).map((el) => el.outerHTML.slice(0, 60))).toEqual([]);
+        expect(childrenMatching(dialog, 'ha-dialog-footer').map((el) => el.assignedSlot?.name)).toEqual(['footer']);
+      });
+
+      it('lays out delete, cancel and save in the slots of ha-dialog-footer', async () => {
+        const dialog = await openDialog();
+        const [footer] = childrenMatching(dialog, 'ha-dialog-footer');
+
+        expect(unslottedChildren(footer)).toEqual([]);
+        const bySlot = (slot: string) =>
+          childrenMatching(footer, `ha-button[slot="${slot}"]`).map((b) => b.textContent?.trim());
+        expect(bySlot('secondaryAction')).toEqual(['Delete', 'Cancel']);
+        expect(bySlot('primaryAction')).toEqual(['save']);
+      });
+
+      it('renders no element HA has removed from its frontend', async () => {
+        const dialog = await openDialog();
+
+        expect(removedTags(dialog)).toEqual([]);
+      });
+
+      it('saves what was typed into the ha-input fields', async () => {
+        const dialog = await openDialog();
+
+        const nameInput = dialog.querySelector<HTMLInputElement>('ha-input[name="name"]')!;
+        const colorInput = dialog.querySelector<HTMLInputElement>('ha-input[name="color"]')!;
+        // ha-input updates its own value before the input event leaves it.
+        nameInput.value = 'Renamed';
+        nameInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        colorInput.value = '#abcdef';
+        colorInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        await element.updateComplete;
+
+        expect(dialog.headerTitle).toBe('Renamed');
+        dialog.querySelector<HTMLElement>('ha-button[slot="primaryAction"]')!.click();
+        await element.updateComplete;
+
+        const stored = JSON.parse(localStorageMock.getItem('radar-card-markers') || '[]');
+        expect(stored).toEqual([expect.objectContaining({ id: '1', name: 'Renamed', color: '#abcdef' })]);
+        expect(element.shadowRoot?.querySelector('ha-dialog')).toBeNull();
+      });
+
+      it('discards the edit when the dialog closes itself (Escape, scrim)', async () => {
+        const dialog = await openDialog();
+
+        const nameInput = dialog.querySelector<HTMLInputElement>('ha-input[name="name"]')!;
+        nameInput.value = 'Not kept';
+        nameInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        // ha-dialog fires `closed`, without detail, once its hide animation ends.
+        dialog.dispatchEvent(new CustomEvent('closed', { bubbles: true, composed: true }));
+        await element.updateComplete;
+
+        expect(element.shadowRoot?.querySelector('ha-dialog')).toBeNull();
+        const stored = JSON.parse(localStorageMock.getItem('radar-card-markers') || '[]');
+        expect(stored).toEqual([expect.objectContaining({ name: 'Editable Marker' })]);
+      });
+
+      it('stays open when something nested inside the dialog reports closed', async () => {
+        const dialog = await openDialog();
+
+        dialog
+          .querySelector('ha-input[name="name"]')!
+          .dispatchEvent(new CustomEvent('closed', { bubbles: true, composed: true }));
+        await element.updateComplete;
+
+        expect(element.shadowRoot?.querySelector('ha-dialog')).not.toBeNull();
+      });
     });
 
     it('should delete a marker from the edit dialog', async () => {
@@ -1064,7 +1175,7 @@ describe('RadarCard', () => {
       await element.updateComplete;
 
       // Click delete
-      const deleteButton = element.shadowRoot?.querySelector<HTMLElement>('mwc-button.warning');
+      const deleteButton = element.shadowRoot?.querySelector<HTMLElement>('ha-dialog-footer ha-button.delete');
       deleteButton?.click();
       await element.updateComplete;
 

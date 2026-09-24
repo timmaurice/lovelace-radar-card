@@ -124,7 +124,8 @@ export interface RadarZone {
   color?: string;
 }
 
+/** The parts of HA's Web Awesome `ha-dialog` (2026.3+) the card relies on. */
 export interface HaDialog extends HTMLElement {
-  heading: string;
+  headerTitle?: string;
   open: boolean;
 }

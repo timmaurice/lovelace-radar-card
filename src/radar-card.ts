@@ -405,6 +405,16 @@ export class RadarCard extends LitElement implements LovelaceCard {
     this._editingMarker = null;
   }
 
+  /**
+   * Escape and a click on the scrim close the dialog from inside, and it reports
+   * that with `closed`. The event bubbles, so only the dialog's own counts - a
+   * nested overlay closing must not throw the edit away.
+   */
+  private _handleMarkerDialogClosed(ev: Event): void {
+    if (ev.target !== ev.currentTarget) return;
+    this._handleMarkerDialogCancel();
+  }
+
   private _handleMarkerDialogDelete(): void {
     if (this._editingMarker) {
       this._deleteMarker(this._editingMarker.id);
@@ -1018,23 +1028,27 @@ export class RadarCard extends LitElement implements LovelaceCard {
     const name = this._editingMarker.name || '';
     const color = this._editingMarker.color || '';
 
+    // `ha-dialog` is Web Awesome's dialog since HA 2026.3: the title goes in
+    // `headerTitle`, and the actions go in its only action slot, `footer`, laid
+    // out by `ha-dialog-footer`. The mwc-era `heading` property and the
+    // `primaryAction`/`secondaryAction` slots on the dialog itself are gone.
     return html`
-      <ha-dialog open @closed=${this._handleMarkerDialogCancel} .heading=${name} class="dialog-actions">
+      <ha-dialog open .headerTitle=${name} @closed=${this._handleMarkerDialogClosed}>
         <div class="dialog-content">
-          <ha-textfield
+          <ha-input
             label=${localize(this.hass, 'component.radar-card.card.dialog.name')}
             name="name"
             .value=${name}
             @input=${this._handleMarkerDialogInput}
-          ></ha-textfield>
+          ></ha-input>
           <div class="color-picker-wrapper">
-            <ha-textfield
+            <ha-input
               label=${localize(this.hass, 'component.radar-card.card.dialog.color')}
               name="color"
               .value=${color}
               placeholder="e.g., #ff0000"
               @input=${this._handleMarkerDialogInput}
-            ></ha-textfield>
+            ></ha-input>
             <hex-color-picker
               .color=${color || '#000000'}
               @color-changed=${(e: CustomEvent) => {
@@ -1044,15 +1058,23 @@ export class RadarCard extends LitElement implements LovelaceCard {
             ></hex-color-picker>
           </div>
         </div>
-        <mwc-button class="warning" @click=${this._handleMarkerDialogDelete} slot="secondaryAction" unelevated>
-          ${localize(this.hass, 'component.radar-card.card.dialog.delete')}
-        </mwc-button>
-        <mwc-button @click=${this._handleMarkerDialogCancel} slot="secondaryAction" unelevated>
-          ${localize(this.hass, 'component.radar-card.card.dialog.cancel')}
-        </mwc-button>
-        <mwc-button @click=${this._handleMarkerDialogSave} slot="primaryAction" unelevated>
-          ${localize(this.hass, 'component.radar-card.card.dialog.save')}
-        </mwc-button>
+        <ha-dialog-footer slot="footer">
+          <ha-button
+            class="delete"
+            slot="secondaryAction"
+            variant="danger"
+            appearance="plain"
+            @click=${this._handleMarkerDialogDelete}
+          >
+            ${localize(this.hass, 'component.radar-card.card.dialog.delete')}
+          </ha-button>
+          <ha-button slot="secondaryAction" appearance="plain" @click=${this._handleMarkerDialogCancel}>
+            ${localize(this.hass, 'component.radar-card.card.dialog.cancel')}
+          </ha-button>
+          <ha-button slot="primaryAction" @click=${this._handleMarkerDialogSave}>
+            ${localize(this.hass, 'component.radar-card.card.dialog.save')}
+          </ha-button>
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }

@@ -338,24 +338,13 @@ ha-fab.add-marker-btn {
 }
 
 ha-dialog {
-  --mdc-dialog-max-width: 400px;
+  /* A name, a colour and a picker: the default 580px would leave it mostly empty. */
+  --ha-dialog-width-md: 400px;
+}
 
-  &.dialog-actions {
-    /* The ha-dialog footer uses a flex container. This will push the primary action to the right. */
-    --justify-action-buttons: space-between;
-    --mdc-dialog-action-button-spacing: 4px;
-    /* Reduce gap between left buttons */
-  }
-
-  mwc-button {
-    --mdc-theme-primary: var(--primary-text-color);
-    --mdc-button-outline-color: transparent;
-    background-color: rgba(var(--rgb-primary-text-color), 0.05);
-    border-radius: 5px;
-    cursor: pointer;
-    display: inline-block;
-    padding: 5px 10px;
-  }
+/* ha-dialog-footer packs every action to the end; the destructive one goes to the other side. */
+ha-button.delete {
+  margin-inline-end: auto;
 }
 
 .dialog-content {
@@ -368,11 +357,6 @@ ha-dialog {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.warning {
-  --mdc-theme-primary: var(--error-color);
-  margin: 0;
 }
 
 .skipped-entities {
