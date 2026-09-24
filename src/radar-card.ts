@@ -823,18 +823,21 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
     const dots = entityGroup.filter((d) => d.isMarker !== true).select('.entity-dot');
     const markers = entityGroup.filter((d) => d.isMarker === true).select('.entity-dot');
-    const avatars = entityGroup.filter((d) => d.isMarker !== true).select('.entity-avatar');
+    // Every group gets an avatar frame on enter, markers included, so the visibility
+    // rule has to cover all of them: a marker never has a picture.
+    const avatars = entityGroup.select('.entity-avatar');
 
     dots.attr('r', 3);
     markers.attr('d', 'M0,-4L4,4H-4Z');
 
     dots.style('display', (d) => (d.entity_picture && this._config.show_avatars ? 'none' : 'block'));
-    avatars.style('display', (d) => (d.entity_picture && this._config.show_avatars ? 'block' : 'none'));
+    avatars.style('display', (d) => (!d.isMarker && d.entity_picture && this._config.show_avatars ? 'block' : 'none'));
 
     entityGroup
       .select('.entity-avatar div')
       .style('border', (d) => `2px solid ${d.color || this._config.entity_color || 'var(--info-color)'}`);
-    entityGroup.select('.entity-avatar img').attr('src', (d) => d.entity_picture || '');
+    // null removes the attribute; an empty src would draw the broken-image icon.
+    entityGroup.select('.entity-avatar img').attr('src', (d) => d.entity_picture || null);
 
     const entityDots = entityGroup.filter((d) => !d.isMarker);
     const entityMarkers = entityGroup.filter((d) => !!d.isMarker);

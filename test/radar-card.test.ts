@@ -1258,6 +1258,24 @@ describe('RadarCard', () => {
       expect(entityDot?.style.display).toBe('none');
     });
 
+    it.each([true, false])('should never show an avatar frame for a marker (show_avatars: %s)', async (showAvatars) => {
+      const marker: RadarMarker = { id: '1', name: 'Avatarless Marker', latitude: 52.53, longitude: 13.42 };
+      localStorageMock.setItem('radar-card-markers', JSON.stringify([marker]));
+
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, enable_markers: true, show_avatars: showAvatars });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const markerGroup = element.shadowRoot?.querySelector('path.entity-dot')?.closest('g.entity-group');
+      const avatar = markerGroup?.querySelector<SVGForeignObjectElement>('.entity-avatar');
+      expect(avatar?.style.display).toBe('none');
+      // An empty src still makes the browser draw its broken-image icon.
+      expect(avatar?.querySelector('img')?.hasAttribute('src')).toBe(false);
+    });
+
     it('should display the fallback map dot when an avatar is not physically available', async () => {
       delete hass.states['device_tracker.avatar_device'].attributes.entity_picture;
       element = document.createElement('radar-card') as RadarCard;
