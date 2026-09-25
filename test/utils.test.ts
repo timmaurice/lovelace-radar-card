@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { formatDistance } from '../src/utils';
+import { describe, expect, it, vi } from 'vitest';
+import { entityDisplayName, formatDistance } from '../src/utils';
 
 describe('formatDistance', () => {
   it('uses metres below a kilometre', () => {
@@ -39,5 +39,33 @@ describe('formatDistance', () => {
   it('drops the decimals of a whole number when asked', () => {
     expect(formatDistance(2, 'km', { removeIntegerDecimals: true })).toBe('2 km');
     expect(formatDistance(2.5, 'km', { removeIntegerDecimals: true })).toBe('2.50 km');
+  });
+});
+
+describe('entityDisplayName', () => {
+  const states = {
+    'device_tracker.phone': {
+      entity_id: 'device_tracker.phone',
+      state: 'home',
+      attributes: { friendly_name: 'Phone' },
+    },
+  };
+
+  it('names the entity with hass.formatEntityName when the core has it', () => {
+    const formatEntityName = vi.fn(() => 'Phone of Tim');
+    expect(entityDisplayName({ states, formatEntityName }, 'device_tracker.phone')).toBe('Phone of Tim');
+    expect(formatEntityName).toHaveBeenCalledWith(states['device_tracker.phone'], undefined);
+  });
+
+  it('keeps a configured name ahead of hass.formatEntityName', () => {
+    const formatEntityName = vi.fn(() => 'Phone of Tim');
+    expect(entityDisplayName({ states, formatEntityName }, 'device_tracker.phone', 'Mine')).toBe('Mine');
+    expect(formatEntityName).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the friendly name, then the entity id', () => {
+    expect(entityDisplayName({ states }, 'device_tracker.phone')).toBe('Phone');
+    expect(entityDisplayName({ states, formatEntityName: () => '' }, 'device_tracker.phone')).toBe('Phone');
+    expect(entityDisplayName({ states }, 'device_tracker.missing')).toBe('device_tracker.missing');
   });
 });

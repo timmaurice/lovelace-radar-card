@@ -22,7 +22,7 @@ import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 if (!window.customElements.get('hex-color-picker')) {
   window.customElements.define('hex-color-picker', class extends HexBase {});
 }
-import { getAzimuth, getDistance, fireEvent, formatDistance } from './utils.js';
+import { entityDisplayName, getAzimuth, getDistance, fireEvent, formatDistance } from './utils.js';
 import { ELEMENT_NAME, EDITOR_ELEMENT_NAME } from './constants.js';
 
 const RADAR_CHART_WIDTH = 220;
@@ -1112,7 +1112,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .map((entityConf): RadarPoint | null => {
         const entityId = entityConf.entity;
         const stateObj = this.hass.states[entityId];
-        const displayName = entityConf.name || (stateObj?.attributes.friendly_name as string | undefined) || entityId;
+        const displayName = entityDisplayName(this.hass, entityId, entityConf.name);
         if (!stateObj) {
           skipped.push({ entity_id: entityId, name: displayName, reason: 'not_found' });
           return null;
@@ -1159,7 +1159,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
         return {
           distance: distance,
           azimuth: azimuth,
-          name: entityConf.name || stateObj.attributes.friendly_name || entityId,
+          name: displayName,
           entity_id: entityId,
           entity_picture: stateObj.attributes.entity_picture as string | undefined,
           color: entityConf.color,
@@ -1217,7 +1217,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
           const radius = unit === 'km' ? radiusInKm : radiusInKm * 0.621371;
           return {
             entity_id: id,
-            name: (stateObj.attributes.friendly_name as string) || id,
+            name: entityDisplayName(this.hass, id),
             distance: zDistance,
             azimuth: zAzimuth,
             radius,

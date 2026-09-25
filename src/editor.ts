@@ -3,7 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCardEditor, RadarCardConfig, RadarCardEntityConfig, RadarMarker } from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { localize } from './localize';
-import { fireEvent } from './utils';
+import { entityDisplayName, fireEvent } from './utils';
 import editorStyles from './styles/editor.styles.scss';
 import { EDITOR_ELEMENT_NAME } from './constants';
 
@@ -473,8 +473,7 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     const entityConf = this._getEntities()[this._editingIndex];
     if (!entityConf) return nothing;
 
-    const stateObj = this.hass.states[entityConf.entity];
-    const title = entityConf.name || stateObj?.attributes.friendly_name || entityConf.entity;
+    const title = entityDisplayName(this.hass, entityConf.entity, entityConf.name);
 
     return html`
       <div class="card-content card-config">

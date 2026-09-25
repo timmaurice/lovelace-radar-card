@@ -254,6 +254,23 @@ describe('RadarCard', () => {
       expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.test_device' });
     });
 
+    it('names a point with hass.formatEntityName when the core has it', async () => {
+      const formatEntityName = vi.fn(() => 'Phone of Tim');
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = { ...hass, formatEntityName };
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
+      entityDot?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      await element.updateComplete;
+
+      expect(element.shadowRoot?.querySelector('.custom-tooltip')?.innerHTML).toContain('Phone of Tim');
+      expect(formatEntityName).toHaveBeenCalledWith(hass.states['device_tracker.test_device'], undefined);
+    });
+
     it('should show a tooltip on mouseover', async () => {
       hass.states['device_tracker.test_device'].attributes.friendly_name = 'My Test Device';
       element = document.createElement('radar-card') as RadarCard;
