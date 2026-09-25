@@ -1,3 +1,5 @@
+import type { HomeAssistant } from './types.js';
+
 /**
  * Dispatches a custom event with an optional detail value.
  *
@@ -112,4 +114,20 @@ export function formatDistance(
     return `${formatNumber(rounded, 0, locale)} ${unit}`;
   }
   return `${formatNumber(rounded, 2, locale)} ${unit}`;
+}
+
+/**
+ * An entity's display name: a configured `name` wins, then `hass.formatEntityName` - the
+ * helper HA's own cards name entities with - and, on a hass object without it, the friendly
+ * name. The entity id is the last resort, also for an entity HA doesn't know.
+ */
+export function entityDisplayName(
+  hass: Pick<HomeAssistant, 'states' | 'formatEntityName'>,
+  entityId: string,
+  name?: string,
+): string {
+  if (name) return name;
+  const stateObj = hass.states[entityId];
+  if (!stateObj) return entityId;
+  return hass.formatEntityName?.(stateObj, undefined) || stateObj.attributes.friendly_name || entityId;
 }

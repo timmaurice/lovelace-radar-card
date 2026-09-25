@@ -15,6 +15,12 @@ export interface HomeAssistant {
   language: string;
   locale: FrontendLocaleData;
   callWS: <T>(message: { type: string; [key: string]: unknown }) => Promise<T>;
+  // HA 2026.4+. hacs.json requires newer, but a hass object that predates it must not break the card.
+  formatEntityName?: (
+    stateObj: HassEntity,
+    name: string | EntityNameItem | EntityNameItem[] | undefined,
+    options?: EntityNameOptions,
+  ) => string;
   themes?: {
     darkMode?: boolean;
     [key: string]: unknown;
@@ -31,6 +37,14 @@ export interface HomeAssistant {
     [key: string]: unknown;
   };
   // You can expand this with more properties from the hass object if needed
+}
+
+// Mirrors the frontend's entity_name_config.ts, the shape hass.formatEntityName accepts.
+export type EntityNameItem =
+  { type: 'floor' | 'area' | 'parent_device' | 'device' | 'entity' } | { type: 'text'; text: string };
+
+export interface EntityNameOptions {
+  separator?: string;
 }
 
 // A basic representation of a Home Assistant entity state object
