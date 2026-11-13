@@ -337,6 +337,42 @@ describe('RadarCard', () => {
       });
     });
 
+    it.each(['Enter', ' '])('should run the tap action on a "%s" keypress', async (key) => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+      vi.mocked(fireEvent).mockClear();
+
+      const group = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      group?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      expect(fireEvent).not.toHaveBeenCalled();
+      group?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.test_device' });
+    });
+
+    it('should position the tooltip from the dot on keyboard focus, not NaN', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(config);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const group = element.shadowRoot?.querySelector<SVGGElement>('g.entity-group');
+      group?.dispatchEvent(new FocusEvent('focus'));
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+
+      const tooltip = (element as unknown as { _tooltip: { visible: boolean; x: number; y: number } })._tooltip;
+      expect(tooltip.visible).toBe(true);
+      expect(Number.isNaN(tooltip.x)).toBe(false);
+      expect(Number.isNaN(tooltip.y)).toBe(false);
+    });
+
     it('should fall back to more-info when the tap_action is "default"', async () => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);
