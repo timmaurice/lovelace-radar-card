@@ -1822,6 +1822,116 @@ describe('RadarCard', () => {
     });
   });
 
+  describe('Redraw guard', () => {
+    const tracker = (lat: number, name = 'Test Device'): HassEntity =>
+      ({
+        entity_id: 'device_tracker.test_device',
+        state: 'not_home',
+        attributes: { latitude: lat, longitude: 13.41, friendly_name: name },
+      }) as HassEntity;
+
+    const zone = (lat: number): HassEntity =>
+      ({
+        entity_id: 'zone.work',
+        state: '0',
+        attributes: { latitude: lat, longitude: 13.41, radius: 100, friendly_name: 'Work' },
+      }) as HassEntity;
+
+    const mount = async (cfg: RadarCardConfig = config) => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig(cfg);
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+      const spy = vi.spyOn(
+        element as unknown as { _renderRadarChart: (animate?: boolean) => void },
+        '_renderRadarChart',
+      );
+      return spy;
+    };
+
+    const push = async (next: Partial<HomeAssistant>) => {
+      element.hass = { ...hass, ...next } as HomeAssistant;
+      await element.updateComplete;
+    };
+
+    beforeEach(() => {
+      hass.states['device_tracker.test_device'] = tracker(52.53);
+    });
+
+    it('should not redraw when an unrelated entity changes', async () => {
+      const spy = await mount();
+      for (let i = 0; i < 40; i++) {
+        await push({
+          states: {
+            ...hass.states,
+            'sensor.unrelated': { entity_id: 'sensor.unrelated', state: String(i), attributes: {} } as HassEntity,
+          },
+        });
+      }
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should not redraw when hass is replaced with identical states', async () => {
+      const spy = await mount();
+      await push({});
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should redraw when a configured entity changes', async () => {
+      const spy = await mount();
+      await push({ states: { ...hass.states, 'device_tracker.test_device': tracker(52.6) } });
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should redraw when the centre entity changes', async () => {
+      hass.states['person.me'] = {
+        entity_id: 'person.me',
+        state: 'home',
+        attributes: { latitude: 52.5, longitude: 13.4 },
+      } as HassEntity;
+      const spy = await mount({ ...config, center_entity: 'person.me' });
+      await push({
+        states: {
+          ...hass.states,
+          'person.me': { ...hass.states['person.me'], attributes: { latitude: 52.4, longitude: 13.4 } },
+        } as HomeAssistant['states'],
+      });
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should redraw when the language or unit system changes', async () => {
+      const spy = await mount();
+      await push({ language: 'de' });
+      expect(spy).toHaveBeenCalledTimes(1);
+      await push({
+        language: 'de',
+        config: { ...hass.config, unit_system: { length: 'mi' } },
+      } as Partial<HomeAssistant>);
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should only follow zones when the overlay is on', async () => {
+      hass.states['zone.work'] = zone(52.6);
+      const off = await mount();
+      await push({ states: { ...hass.states, 'zone.work': zone(52.7) } });
+      expect(off).not.toHaveBeenCalled();
+      element.remove();
+
+      const on = await mount({ ...config, show_zones: true });
+      await push({ states: { ...hass.states, 'zone.work': zone(52.7) } });
+      expect(on).toHaveBeenCalledTimes(1);
+    });
+
+    it('should still redraw for a config change', async () => {
+      const spy = await mount();
+      element.setConfig({ ...config, show_grid_labels: false });
+      await element.updateComplete;
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
   describe('Teardown', () => {
     beforeEach(() => {
       hass.states['device_tracker.test_device'] = {
