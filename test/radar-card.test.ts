@@ -1923,6 +1923,32 @@ describe('RadarCard', () => {
       expect(fireEvent).not.toHaveBeenCalled();
     });
 
+    it('should give every dot a button role and a name with distance and direction', async () => {
+      await mount();
+      for (const group of groups()) {
+        expect(group.getAttribute('role')).toBe('button');
+        expect(group.getAttribute('tabindex')).toBe('0');
+        expect(group.getAttribute('aria-label')).toMatch(/^(Alpha|Beta)\. .+: .+\. .+: \d+°\./);
+      }
+    });
+
+    it('should return focus to the originating dot after Escape closes the chooser', async () => {
+      await mount();
+      const dot = groups()[0];
+      dot.focus();
+      dot.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      await element.updateComplete;
+      expect(element.shadowRoot?.activeElement).toBe(chooserButtons()[0]);
+
+      element.shadowRoot
+        ?.querySelector('.point-chooser')
+        ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await element.updateComplete;
+
+      expect(element.shadowRoot?.querySelector('.point-chooser')).toBeNull();
+      expect(element.shadowRoot?.activeElement).toBe(dot);
+    });
+
     it('should keep acting at once on a point that stands alone', async () => {
       hass.states['device_tracker.beta'] = pair(52.55)[1];
       await mount();
