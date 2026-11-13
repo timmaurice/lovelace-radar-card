@@ -36,6 +36,7 @@ jobs:
       - name: Run checks
         run: |
           npm run lint
+          npm run typecheck
           npm run check-format
           npm run test
           npm run build
