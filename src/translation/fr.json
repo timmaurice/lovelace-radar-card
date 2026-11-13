@@ -28,6 +28,7 @@
     "font_color": "Couleur de la police (Optionnel)",
     "entity_color": "Couleur par défaut de l'entité (Optionnel)",
     "color_contrast_help": "Pour l'accessibilité, assurez-vous que toutes les couleurs ont un contraste suffisant avec l'arrière-plan de la carte.",
+    "toggle_help": "Afficher ou masquer l'aide",
     "show_grid_labels": "Afficher les étiquettes de distance de la grille",
     "show_avatars": "Afficher les avatars d'entité",
     "show_zones": "Afficher les zones",

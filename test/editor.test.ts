@@ -205,4 +205,59 @@ describe('RadarCardEditor', () => {
       expect(window.customElements.get('radar-card-editor')).toBe(first);
     });
   });
+
+  describe('Keyboard operability', () => {
+    const key = (el: Element, k: string): KeyboardEvent => {
+      const ev = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+      el.dispatchEvent(ev);
+      return ev;
+    };
+
+    beforeEach(async () => {
+      element.setConfig({ type: 'custom:radar-card', entities: ['device_tracker.test'] });
+      await element.updateComplete;
+    });
+
+    it('makes every help icon a focusable button that toggles its help on Enter and Space', async () => {
+      const icons = Array.from(element.shadowRoot!.querySelectorAll('.help-icon'));
+      expect(icons.length).toBeGreaterThan(0);
+      for (const icon of icons) {
+        expect(icon.getAttribute('role')).toBe('button');
+        expect(icon.getAttribute('tabindex')).toBe('0');
+        expect(icon.getAttribute('aria-label')).toBe('toggle_help');
+        expect(icon.getAttribute('aria-expanded')).toBe('false');
+      }
+
+      const first = icons[0]!;
+      expect(key(first, 'Tab').defaultPrevented).toBe(false);
+      await element.updateComplete;
+      expect(element.shadowRoot!.querySelectorAll('.help-text').length).toBe(0);
+
+      expect(key(first, 'Enter').defaultPrevented).toBe(true);
+      await element.updateComplete;
+      expect(element.shadowRoot!.querySelectorAll('.help-text').length).toBe(1);
+      expect(element.shadowRoot!.querySelectorAll('.help-icon')[0]!.getAttribute('aria-expanded')).toBe('true');
+
+      key(element.shadowRoot!.querySelectorAll('.help-icon')[0]!, ' ');
+      await element.updateComplete;
+      expect(element.shadowRoot!.querySelectorAll('.help-text').length).toBe(0);
+    });
+
+    it('opens the color picker from the keyboard via the color preview', async () => {
+      const preview = element.shadowRoot!.querySelector('.color-preview')!;
+      expect(preview.getAttribute('role')).toBe('button');
+      expect(preview.getAttribute('tabindex')).toBe('0');
+      expect(preview.getAttribute('aria-expanded')).toBe('false');
+      expect(element.shadowRoot!.querySelector('.color-picker-popup')).toBeNull();
+
+      key(preview, 'Enter');
+      await element.updateComplete;
+      expect(element.shadowRoot!.querySelector('.color-picker-popup')).not.toBeNull();
+      expect(element.shadowRoot!.querySelector('.color-preview')!.getAttribute('aria-expanded')).toBe('true');
+
+      key(element.shadowRoot!.querySelector('.color-preview')!, ' ');
+      await element.updateComplete;
+      expect(element.shadowRoot!.querySelector('.color-picker-popup')).toBeNull();
+    });
+  });
 });

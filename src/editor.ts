@@ -232,6 +232,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
     this._markers = []; // Update local state
   }
 
+  /** Runs `action` on Enter or Space, so non-button elements behave like buttons. */
+  private _activateOnKey(e: KeyboardEvent, action: () => void): void {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    action();
+  }
+
   private _toggleColorPicker(pickerId: string): void {
     this._colorPickerOpenFor = this._colorPickerOpenFor === pickerId ? null : pickerId;
   }
@@ -324,8 +331,13 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
         </ha-input>
         <div
           class="color-preview"
+          role="button"
+          tabindex="0"
+          aria-label=${label}
+          aria-expanded=${isPickerOpen ? 'true' : 'false'}
           style="background-color: ${resolvedValue || 'transparent'}"
           @click=${() => this._toggleColorPicker(pickerId)}
+          @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleColorPicker(pickerId))}
         ></div>
         ${
           isPickerOpen
@@ -549,7 +561,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 <ha-icon
                   class="help-icon"
                   icon="mdi:help-circle-outline"
+                  role="button"
+                  tabindex="0"
+                  aria-label=${localize(this.hass, 'component.radar-card.editor.toggle_help')}
+                  aria-expanded=${this._showHelpFor.has('auto_radar_max_distance') ? 'true' : 'false'}
                   @click=${() => this._toggleHelp('auto_radar_max_distance')}
+                  @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleHelp('auto_radar_max_distance'))}
                 ></ha-icon>
               </div>
             </div>
@@ -591,7 +608,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 <ha-icon
                   class="help-icon"
                   icon="mdi:help-circle-outline"
+                  role="button"
+                  tabindex="0"
+                  aria-label=${localize(this.hass, 'component.radar-card.editor.toggle_help')}
+                  aria-expanded=${this._showHelpFor.has('center_coords_override') ? 'true' : 'false'}
                   @click=${() => this._toggleHelp('center_coords_override')}
+                  @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleHelp('center_coords_override'))}
                 ></ha-icon>
               </div>
               ${
@@ -655,7 +677,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                         <ha-icon
                           class="help-icon"
                           icon="mdi:help-circle-outline"
+                          role="button"
+                          tabindex="0"
+                          aria-label=${localize(this.hass, 'component.radar-card.editor.toggle_help')}
+                          aria-expanded=${this._showHelpFor.has('markers_help') ? 'true' : 'false'}
                           @click=${() => this._toggleHelp('markers_help')}
+                          @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleHelp('markers_help'))}
                         ></ha-icon>
                       </div>
                       ${
@@ -737,7 +764,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
               <ha-icon
                 class="help-icon"
                 icon="mdi:help-circle-outline"
+                role="button"
+                tabindex="0"
+                aria-label=${localize(this.hass, 'component.radar-card.editor.toggle_help')}
+                aria-expanded=${this._showHelpFor.has('appearance_help') ? 'true' : 'false'}
                 @click=${() => this._toggleHelp('appearance_help')}
+                @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleHelp('appearance_help'))}
               ></ha-icon>
             </div>
             ${
@@ -798,7 +830,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
               <ha-icon
                 class="help-icon"
                 icon="mdi:help-circle-outline"
+                role="button"
+                tabindex="0"
+                aria-label=${localize(this.hass, 'component.radar-card.editor.toggle_help')}
+                aria-expanded=${this._showHelpFor.has('legend_pulse_help') ? 'true' : 'false'}
                 @click=${() => this._toggleHelp('legend_pulse_help')}
+                @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleHelp('legend_pulse_help'))}
               ></ha-icon>
             </div>
             ${
@@ -900,7 +937,12 @@ export class RadarCardEditor extends LitElement implements LovelaceCardEditor {
                 <ha-icon
                   class="help-icon"
                   icon="mdi:help-circle-outline"
+                  role="button"
+                  tabindex="0"
+                  aria-label=${localize(this.hass, 'component.radar-card.editor.toggle_help')}
+                  aria-expanded=${this._showHelpFor.has('moving_animation_enabled') ? 'true' : 'false'}
                   @click=${() => this._toggleHelp('moving_animation_enabled')}
+                  @keydown=${(e: KeyboardEvent) => this._activateOnKey(e, () => this._toggleHelp('moving_animation_enabled'))}
                 ></ha-icon>
               </div>
             </div>
