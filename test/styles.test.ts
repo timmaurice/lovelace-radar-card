@@ -23,3 +23,15 @@ describe('Styles against the Web Awesome ha-button', () => {
     expect(css).not.toMatch(/--mdc-button-/);
   });
 });
+
+/**
+ * A flex item defaults to `min-width: auto`, so a long entity name kept the
+ * picker at its text width and pushed the row's icon buttons out of reach.
+ */
+describe('Editor entity row', () => {
+  it('lets the entity picker shrink so the row buttons stay visible', () => {
+    const css = sheet('editor.styles.scss');
+    const block = /\.entity-row\s*\{[\s\S]*?ha-entity-picker\s*\{([^}]*)\}/.exec(css);
+    expect(block?.[1]).toMatch(/min-width:\s*0/);
+  });
+});
