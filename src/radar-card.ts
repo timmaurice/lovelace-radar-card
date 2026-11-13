@@ -1514,6 +1514,54 @@ export class RadarCard extends LitElement implements LovelaceCard {
     this._hasAnimated = false;
   }
 
+  /**
+   * Home Assistant hands the card a new `hass` on every state change anywhere
+   * in the house, and `updated` answers each one with a full d3 join. Only a
+   * change to something the card draws from is worth that, so a `hass`-only
+   * update is let through when it touches one of those inputs and dropped
+   * otherwise. Any other changed property (config, tooltip, markers, ...) still
+   * renders as before.
+   */
+  protected shouldUpdate(changedProperties: Map<string | number | symbol, unknown>): boolean {
+    if (changedProperties.size !== 1 || !changedProperties.has('hass')) return true;
+    const previous = changedProperties.get('hass') as HomeAssistant | undefined;
+    if (!previous || !this._config || !this.hass) return true;
+    return this._isHassChangeRelevant(previous, this.hass);
+  }
+
+  private _isHassChangeRelevant(previous: HomeAssistant, next: HomeAssistant): boolean {
+    if (previous === next) return false;
+    if (
+      previous.language !== next.language ||
+      previous.locale?.language !== next.locale?.language ||
+      previous.config?.latitude !== next.config?.latitude ||
+      previous.config?.longitude !== next.config?.longitude ||
+      previous.config?.unit_system?.length !== next.config?.unit_system?.length
+    ) {
+      return true;
+    }
+
+    const ids = new Set<string>();
+    for (const entity of this._config.entities) ids.add(typeof entity === 'string' ? entity : entity.entity);
+    if (this._config.center_entity) ids.add(this._config.center_entity);
+    if (this._config.location_zone_entity) ids.add(this._config.location_zone_entity);
+    for (const id of ids) {
+      if (previous.states?.[id] !== next.states?.[id]) return true;
+    }
+
+    if (this._config.show_zones) {
+      // The overlay draws every zone, so any zone appearing, vanishing or changing counts.
+      const isZone = (id: string): boolean => id.startsWith('zone.');
+      for (const id of Object.keys(next.states ?? {})) {
+        if (isZone(id) && previous.states?.[id] !== next.states[id]) return true;
+      }
+      for (const id of Object.keys(previous.states ?? {})) {
+        if (isZone(id) && !(id in (next.states ?? {}))) return true;
+      }
+    }
+    return false;
+  }
+
   protected willUpdate(changedProperties: Map<string | number | symbol, unknown>): void {
     super.willUpdate(changedProperties);
     if (
