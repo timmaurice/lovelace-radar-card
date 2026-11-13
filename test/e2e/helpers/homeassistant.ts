@@ -106,6 +106,69 @@ export async function waitForCoreRunning(timeoutMs = 180_000): Promise<void> {
   throw new Error(`Home Assistant never reached RUNNING (last saw ${lastState})`);
 }
 
+/**
+ * Completes Home Assistant's onboarding when the instance is fresh.
+ *
+ * `test-env/config/.storage` is not tracked, so a clean checkout (or CI) starts
+ * a Home Assistant that still wants an owner account. Creating that account
+ * through the same HTTP API the onboarding screen uses means the suite needs no
+ * state from any developer's machine. On an instance that is already onboarded
+ * `/api/onboarding` reports every step as done, and this does nothing.
+ */
+export async function ensureOnboarded(): Promise<void> {
+  const clientId = `${BASE_URL}/`;
+  const steps = (await (await fetch(`${BASE_URL}/api/onboarding`)).json().catch(() => [])) as {
+    step: string;
+    done: boolean;
+  }[];
+  const pending = new Set(steps.filter((s) => !s.done).map((s) => s.step));
+  if (pending.size === 0) return;
+
+  let accessToken: string | undefined;
+  if (pending.has('user')) {
+    const created = await fetch(`${BASE_URL}/api/onboarding/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: clientId,
+        name: 'Admin',
+        username: USERNAME,
+        password: PASSWORD,
+        language: 'en',
+      }),
+    });
+    if (!created.ok) throw new Error(`onboarding user step failed: ${created.status}`);
+    const { auth_code: code } = (await created.json()) as { auth_code: string };
+    const token = await fetch(`${BASE_URL}/auth/token`, {
+      method: 'POST',
+      body: new URLSearchParams({ grant_type: 'authorization_code', code, client_id: clientId }),
+    });
+    if (!token.ok) throw new Error(`onboarding token exchange failed: ${token.status}`);
+    accessToken = ((await token.json()) as { access_token: string }).access_token;
+  } else {
+    throw new Error(
+      `Home Assistant is partly onboarded (${[...pending].join(', ')}) but the user step is done; ` +
+        'finish it by hand or remove test-env/config/.storage',
+    );
+  }
+
+  const authorized = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+  const bodies: Record<string, unknown> = {
+    core_config: {},
+    analytics: {},
+    integration: { client_id: clientId, redirect_uri: `${clientId}?auth_callback=1` },
+  };
+  for (const [step, body] of Object.entries(bodies)) {
+    if (!pending.has(step)) continue;
+    const res = await fetch(`${BASE_URL}/api/onboarding/${step}`, {
+      method: 'POST',
+      headers: authorized,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`onboarding ${step} step failed: ${res.status}`);
+  }
+}
+
 export interface Tokens {
   access_token: string;
 }
