@@ -57,17 +57,17 @@ test.describe('The editor in a real frontend', () => {
     await expect(moving).toBeVisible({ timeout: 30_000 });
     await expect(editor.getByRole('radiogroup')).toBeVisible();
     await expect(moving).toBeChecked();
-    await expect(editor.getByText('Center Entity (Moving)')).toBeVisible();
+    await expect(editor.getByText('Center Entity (Moving)').filter({ visible: true })).toBeVisible();
 
     await staticMode.click();
     await expect(staticMode).toBeChecked();
     await expect(moving).not.toBeChecked();
     // The config followed: the static mode's zone picker replaced the entity one.
-    await expect(editor.getByText('Center Zone (Static)')).toBeVisible();
+    await expect(editor.getByText('Center Zone (Static)').filter({ visible: true })).toBeVisible();
 
     await moving.click();
     await expect(moving).toBeChecked();
-    await expect(editor.getByText('Center Entity (Moving)')).toBeVisible();
+    await expect(editor.getByText('Center Entity (Moving)').filter({ visible: true })).toBeVisible();
 
     const undefinedTags = await editor.evaluate((host) => {
       const tags = new Set<string>();

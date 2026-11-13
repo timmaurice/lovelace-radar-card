@@ -211,11 +211,19 @@ entities:
 
 4.  **Test locally with Docker:**
     We provide a pre-configured Home Assistant Docker environment for testing.
+
     ```bash
     cd test-env
     docker compose up -d
     ```
+
     Open `http://localhost:8133` in your browser. Your local `dist/radar-card.js` is automatically mounted, so changes will reflect after a hard refresh.
+
+5.  **Run the end-to-end tests:**
+    From a fresh clone, this builds the card, starts the Docker environment above, onboards Home Assistant on first start (user `admin`, password `password`) and drives the card with Playwright. The same job runs in GitHub Actions on every pull request.
+    ```bash
+    npm ci && npx playwright install chromium && npm run build && npm run test:e2e
+    ```
 
 </details>
 
