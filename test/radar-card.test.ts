@@ -1879,6 +1879,16 @@ describe('RadarCard', () => {
       // Asserts scale maps radius dynamically
       const radius = parseFloat(zoneOverlays?.[0].getAttribute('r') || '0');
       expect(radius).toBeGreaterThan(0);
+
+      // The zone layer is clipped to the outer ring, not the square viewBox.
+      const layer = element.shadowRoot?.querySelector('g.zone-layer');
+      expect(layer?.querySelector('circle.zone-circle')).not.toBeNull();
+      const clipId = layer?.getAttribute('clip-path')?.match(/url\(#(.+)\)/)?.[1];
+      expect(clipId).toBeTruthy();
+      const clipCircle = element.shadowRoot?.querySelector(`clipPath#${clipId} circle`);
+      const rings = [...(element.shadowRoot?.querySelectorAll('circle.grid-circle') ?? [])];
+      const outer = Math.max(...rings.map((ring) => parseFloat(ring.getAttribute('r') || '0')));
+      expect(parseFloat(clipCircle?.getAttribute('r') || '0')).toBeCloseTo(outer);
     });
 
     it('should filter zones against the auto-scaled radius, not a stale radar_max_distance', async () => {
