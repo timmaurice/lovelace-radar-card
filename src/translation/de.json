@@ -28,6 +28,7 @@
     "font_color": "Schriftfarbe (Optional)",
     "entity_color": "Standard Entitätsfarbe (Optional)",
     "color_contrast_help": "Stellen Sie für die Barrierefreiheit sicher, dass alle Farben einen ausreichenden Kontrast zum Kartenhintergrund haben.",
+    "toggle_help": "Hilfe ein- oder ausblenden",
     "show_grid_labels": "Gitter-Entfernungsbeschriftungen anzeigen",
     "show_avatars": "Entitäts-Avatare anzeigen",
     "show_zones": "Zonen-Overlays anzeigen",

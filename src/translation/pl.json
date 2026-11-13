@@ -28,6 +28,7 @@
     "font_color": "Kolor czcionki (opcjonalny)",
     "entity_color": "Domyślny kolor encji (opcjonalny)",
     "color_contrast_help": "Sprawdź, czy wszystkie kolory mają kontrast wystarczający dla użytego tła karty.",
+    "toggle_help": "Pokaż lub ukryj pomoc",
     "show_grid_labels": "Pokaż etykiety na siatce radaru",
     "show_avatars": "Pokaż awatary encji",
     "show_zones": "Pokaż strefy",

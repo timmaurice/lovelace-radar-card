@@ -28,6 +28,7 @@
     "font_color": "Font Color (Optional)",
     "entity_color": "Default Entity Color (Optional)",
     "color_contrast_help": "For accessibility, ensure all colors have sufficient contrast against the card background.",
+    "toggle_help": "Show or hide help",
     "show_grid_labels": "Show Grid Distance Labels",
     "show_avatars": "Show Entity Avatars",
     "show_zones": "Show Zone Overlays",
