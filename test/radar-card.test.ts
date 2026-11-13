@@ -2011,8 +2011,13 @@ describe('RadarCard', () => {
 
       element.remove();
       expect(animating()).toHaveLength(0);
-      // And nothing is left to tick against the detached nodes.
-      await vi.runAllTimersAsync();
+      // And nothing is left to tick against the detached nodes. A bounded
+      // advance, not runAllTimers: d3 keeps a repeating clock-skew interval
+      // (`poke`) alive for as long as its real-time animation frame has not
+      // woken its scheduler, which under fake timers is down to how much real
+      // time the earlier tests happened to leave, and runAllTimers would then
+      // spin on it until its 10000-timer abort.
+      await vi.advanceTimersByTimeAsync(2000);
     });
   });
 
