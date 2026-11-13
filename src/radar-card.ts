@@ -201,7 +201,11 @@ export class RadarCard extends LitElement implements LovelaceCard {
     return chartRows + Math.ceil((this._points.length + this._skipped.length) / 2);
   }
 
-  private async _showTooltip(event: MouseEvent, point: RadarPoint, distanceUnit: string): Promise<void> {
+  private async _showTooltip(
+    event: { clientX: number; clientY: number },
+    point: RadarPoint,
+    distanceUnit: string,
+  ): Promise<void> {
     const content = this._getPointTooltipContent(point, distanceUnit);
     this._tooltip = { ...this._tooltip, visible: true, content };
 
@@ -273,7 +277,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
     return `${name}. ${distanceLabel}: ${distanceStr}. ${azimuthLabel}: ${Math.round(point.azimuth)}°.${beyond}`;
   }
 
-  private _moveTooltip(event: MouseEvent): void {
+  private _moveTooltip(event: { clientX: number; clientY: number }): void {
     if (!this._tooltip.visible) return;
 
     const tooltipEl = this.shadowRoot?.querySelector<HTMLElement>('.custom-tooltip');
@@ -831,8 +835,15 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .on('mouseover', (event, d) => {
         this._showTooltip(event, d, distanceUnit);
       })
-      .on('focus', (event, d) => {
-        this._showTooltip(event, d, distanceUnit);
+      .on('focus', (event: FocusEvent, d) => {
+        // A FocusEvent carries no pointer position, so anchor the tooltip to
+        // the centre of the focused dot instead.
+        const rect = (event.currentTarget as Element).getBoundingClientRect();
+        this._showTooltip(
+          { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 },
+          d,
+          distanceUnit,
+        );
       })
       .on('mousemove', (event) => {
         this._moveTooltip(event);
@@ -917,7 +928,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
     }
 
-    entityGroup.on('click', (event, d) => {
+    const activate = (d: RadarPoint) => {
       if (d.entity_id && !d.isMarker) {
         const entityConf = this._config.entities.find((e) => (typeof e === 'string' ? e : e.entity) === d.entity_id);
         const tapAction = typeof entityConf !== 'string' ? entityConf?.tap_action : undefined;
@@ -934,6 +945,14 @@ export class RadarCard extends LitElement implements LovelaceCard {
         }
       } else if (d.isMarker) {
         this._handleMarkerClick(d);
+      }
+    };
+    entityGroup.on('click', (_event, d) => activate(d));
+    // Dots are focusable (tabindex 0), so Enter and Space must do what a click does.
+    entityGroup.on('keydown', (event: KeyboardEvent, d) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activate(d);
       }
     });
   }
