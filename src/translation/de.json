@@ -64,6 +64,7 @@
     },
     "no_entities": "Keine Entitäten zum Anzeigen",
     "no_entities_add_marker": "Keine Entitäten zum Anzeigen. Mit der Schaltfläche fügen Sie eine Markierung am Mittelpunkt hinzu.",
+    "choose_entity": "Mehrere Entitäten an dieser Stelle - bitte wählen",
     "beyond_range": "Außerhalb der Radar-Reichweite",
     "skipped": {
       "title": "Nicht angezeigt",

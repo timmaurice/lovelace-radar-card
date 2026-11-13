@@ -409,3 +409,54 @@ ha-button.delete {
   margin-top: 6px;
   padding-top: 6px;
 }
+
+/* Chooser for points that sit on exactly the same spot. */
+.point-chooser-backdrop {
+  inset: 0;
+  position: absolute;
+  z-index: 999;
+}
+
+.point-chooser {
+  background-color: var(--ha-card-background, var(--card-background-color, white));
+  border: 1px solid var(--divider-color);
+  border-radius: var(--ha-card-border-radius, 4px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  max-width: 220px;
+  min-width: 140px;
+  padding: 4px;
+  position: absolute;
+  z-index: 1001;
+
+  .point-chooser-title {
+    color: var(--secondary-text-color);
+    padding: 4px 8px;
+  }
+
+  .point-chooser-item {
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    color: var(--primary-text-color);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: 8px;
+    justify-content: space-between;
+    padding: 6px 8px;
+    text-align: left;
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--secondary-background-color);
+    }
+  }
+
+  .point-chooser-distance {
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+  }
+}

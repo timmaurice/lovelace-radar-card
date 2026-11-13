@@ -106,6 +106,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
   @state() private _pulsingEntityId: string | null = null;
   @state() private _error: string | null = null;
   @state() private _editingMarker: RadarMarker | null = null;
+  /** Open when a click or Enter hit a pile of points sharing one position. */
+  @state() private _chooser: { points: RadarPoint[]; x: number; y: number } | null = null;
+  private _chooserOpener: Element | null = null;
   private _hasAnimated = false;
   private _testAnimationTimeout?: ReturnType<typeof setTimeout>;
   @state() private _isTestingAnimation = false;
@@ -217,19 +220,27 @@ export class RadarCard extends LitElement implements LovelaceCard {
   }
 
   /**
-   * The points the clamp draws on top of each other. Beyond the maximum every
-   * distance collapses onto the rim, so trackers sharing a bearing end up
-   * pixel-identical: distance ordering is gone and only the last group drawn
-   * can receive a `mouseover`. Keyboard users still reach each one through its
-   * own `tabindex`, so the mouse tooltip speaks for the whole pile instead,
-   * nearest first. Anything inside the radar keeps its own position and so
-   * stands alone.
+   * The points drawn on top of each other, nearest first. Two cases:
+   * - Beyond the maximum every distance collapses onto the rim, so trackers
+   *   sharing a bearing end up pixel-identical.
+   * - Inside the radar, trackers reporting the same position (same distance
+   *   and bearing) sit exactly on one spot.
+   * Either way only the last group drawn can receive the pointer, so the mouse
+   * tooltip speaks for the whole pile and a click or Enter opens a chooser
+   * instead of acting on the topmost point alone. Keyboard users additionally
+   * reach each one through its own `tabindex`.
    */
   private _getCoincidentPoints(point: RadarPoint): RadarPoint[] {
-    if (!this._isBeyondRange(point)) return [point];
-    const stacked = this._points.filter(
-      (other) => this._isBeyondRange(other) && Math.round(other.azimuth) === Math.round(point.azimuth),
-    );
+    const beyond = this._isBeyondRange(point);
+    const stacked = this._points.filter((other) => {
+      if (other === point) return true;
+      if (beyond) return this._isBeyondRange(other) && Math.round(other.azimuth) === Math.round(point.azimuth);
+      return (
+        !this._isBeyondRange(other) &&
+        Math.abs(other.distance - point.distance) < 1e-4 &&
+        Math.abs(other.azimuth - point.azimuth) < 1e-3
+      );
+    });
     return stacked.length > 1 ? [...stacked].sort((a, b) => a.distance - b.distance) : [point];
   }
 
@@ -928,33 +939,119 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)));
     }
 
-    const activate = (d: RadarPoint) => {
-      if (d.entity_id && !d.isMarker) {
-        const entityConf = this._config.entities.find((e) => (typeof e === 'string' ? e : e.entity) === d.entity_id);
-        const tapAction = typeof entityConf !== 'string' ? entityConf?.tap_action : undefined;
-
-        if (tapAction && tapAction.action !== 'default') {
-          // The frontend runs the action itself, so every type the action
-          // editor offers works, perform-action and assist included.
-          fireEvent(this, 'hass-action', {
-            config: { entity: d.entity_id, tap_action: tapAction },
-            action: 'tap',
-          });
-        } else {
-          fireEvent(this, 'hass-more-info', { entityId: d.entity_id });
-        }
-      } else if (d.isMarker) {
-        this._handleMarkerClick(d);
-      }
-    };
-    entityGroup.on('click', (_event, d) => activate(d));
+    entityGroup.on('click', (event: MouseEvent, d) =>
+      this._handlePointInteraction(event, d, { clientX: event.clientX, clientY: event.clientY }),
+    );
     // Dots are focusable (tabindex 0), so Enter and Space must do what a click does.
     entityGroup.on('keydown', (event: KeyboardEvent, d) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        activate(d);
+        this._handlePointInteraction(event, d);
       }
     });
+  }
+
+  private _activatePoint(d: RadarPoint): void {
+    if (d.entity_id && !d.isMarker) {
+      const entityConf = this._config.entities.find((e) => (typeof e === 'string' ? e : e.entity) === d.entity_id);
+      const tapAction = typeof entityConf !== 'string' ? entityConf?.tap_action : undefined;
+
+      if (tapAction && tapAction.action !== 'default') {
+        // The frontend runs the action itself, so every type the action
+        // editor offers works, perform-action and assist included.
+        fireEvent(this, 'hass-action', {
+          config: { entity: d.entity_id, tap_action: tapAction },
+          action: 'tap',
+        });
+      } else {
+        fireEvent(this, 'hass-more-info', { entityId: d.entity_id });
+      }
+    } else if (d.isMarker) {
+      this._handleMarkerClick(d);
+    }
+  }
+
+  /**
+   * Click or Enter on a dot. A lone point acts at once; a pile opens a small
+   * chooser, because the topmost group would otherwise swallow the rest.
+   */
+  private _handlePointInteraction(
+    event: Event,
+    point: RadarPoint,
+    anchor?: { clientX: number; clientY: number },
+  ): void {
+    const stacked = this._getCoincidentPoints(point);
+    if (stacked.length === 1) {
+      this._activatePoint(point);
+      return;
+    }
+    const opener = event.currentTarget as Element | null;
+    let position = anchor;
+    if (!position) {
+      const rect = opener?.getBoundingClientRect();
+      position = rect
+        ? { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }
+        : { clientX: 0, clientY: 0 };
+    }
+    const container = this.shadowRoot?.querySelector<HTMLElement>('.radar-chart-container');
+    const box = container?.getBoundingClientRect();
+    this._hideTooltip();
+    this._chooserOpener = opener;
+    this._chooser = {
+      points: stacked,
+      x: position.clientX - (box?.left ?? 0),
+      y: position.clientY - (box?.top ?? 0),
+    };
+    void this.updateComplete.then(() => {
+      this.shadowRoot?.querySelector<HTMLElement>('.point-chooser button')?.focus();
+    });
+  }
+
+  private _closeChooser(restoreFocus = false): void {
+    if (!this._chooser) return;
+    this._chooser = null;
+    const opener = this._chooserOpener;
+    this._chooserOpener = null;
+    if (restoreFocus && opener instanceof SVGElement) opener.focus();
+  }
+
+  private _chooseCoincidentPoint(point: RadarPoint): void {
+    this._closeChooser();
+    this._activatePoint(point);
+  }
+
+  private _renderChooser(distanceUnit: string): TemplateResult | typeof nothing {
+    if (!this._chooser) return nothing;
+    const { points, x, y } = this._chooser;
+    const containerWidth = this.shadowRoot?.querySelector<HTMLElement>('.radar-chart-container')?.clientWidth ?? 0;
+    const flip = containerWidth > 0 && x > containerWidth / 2;
+    return html`
+      <div class="point-chooser-backdrop" @click=${() => this._closeChooser()}></div>
+      <div
+        class="point-chooser"
+        role="group"
+        aria-label=${localize(this.hass, 'component.radar-card.card.choose_entity')}
+        style="left: ${x}px; top: ${y}px; transform: translateX(${flip ? '-100%' : '0'});"
+        @keydown=${(e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            this._closeChooser(true);
+          }
+        }}
+      >
+        <div class="point-chooser-title">${localize(this.hass, 'component.radar-card.card.choose_entity')}</div>
+        ${points.map(
+          (point) => html`
+            <button type="button" class="point-chooser-item" @click=${() => this._chooseCoincidentPoint(point)}>
+              <span class="point-chooser-name">${point.name || point.entity_id}</span>
+              <span class="point-chooser-distance"
+                >${formatDistance(point.distance, distanceUnit, { locale: this._locale })}</span
+              >
+            </button>
+          `,
+        )}
+      </div>
+    `;
   }
 
   private _renderLegend(animate = false): TemplateResult {
@@ -1381,6 +1478,7 @@ export class RadarCard extends LitElement implements LovelaceCard {
             : ''
         }
         ${markersEnabled ? this._renderAddMarkerButton(shouldAnimateLegend) : nothing}
+        ${this._renderChooser(this.hass.config.unit_system.length || 'km')}
       </div>
     `;
 

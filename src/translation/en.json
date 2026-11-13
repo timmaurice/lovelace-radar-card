@@ -64,6 +64,7 @@
     },
     "no_entities": "No entities to show",
     "no_entities_add_marker": "No entities to show. Use the button to add a marker at the center point.",
+    "choose_entity": "Several entities at this spot - choose one",
     "beyond_range": "Beyond the radar's range",
     "skipped": {
       "title": "Not shown",
