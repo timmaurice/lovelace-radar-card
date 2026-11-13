@@ -186,7 +186,9 @@ export class RadarCard extends LitElement implements LovelaceCard {
 
   /** Sizing for Sections dashboards; without it the card gets the grid default. */
   public getGridOptions(): { columns: number; rows: string; min_columns: number; min_rows: number } {
-    return { columns: 6, rows: 'auto', min_columns: 4, min_rows: 4 };
+    // The floor follows the legend: a fixed 4 rows held the title and chart but
+    // not a legend below them, which overflowed once a layout pinned the rows.
+    return { columns: 6, rows: 'auto', min_columns: 4, min_rows: Math.max(4, this.getCardSize()) };
   }
 
   public getCardSize(): number {

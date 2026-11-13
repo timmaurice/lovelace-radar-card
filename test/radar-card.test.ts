@@ -1731,10 +1731,13 @@ describe('RadarCard', () => {
 
       // Four entities wrap onto two legend rows below the 3-row chart.
       expect(element.getCardSize()).toBe(5);
+      // The sections floor must leave room for that legend too.
+      expect(element.getGridOptions().min_rows).toBe(5);
 
       element.setConfig({ ...config, entities, show_legend: false });
       await element.updateComplete;
       expect(element.getCardSize()).toBe(3);
+      expect(element.getGridOptions().min_rows).toBe(4);
 
       element.setConfig({ ...config, entities, legend_position: 'right' });
       await element.updateComplete;
