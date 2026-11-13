@@ -650,8 +650,30 @@ export class RadarCard extends LitElement implements LovelaceCard {
         .style('font-size', '10px');
     }
 
+    // Zones scale unclamped, so one reaching past the outer ring would spill over
+    // the square viewBox. Clip the whole zone layer to the radar's disc instead.
+    svgRoot
+      .selectAll('defs')
+      .data([null])
+      .join('defs')
+      .selectAll('clipPath#radar-zone-clip')
+      .data([null])
+      .join('clipPath')
+      .attr('id', 'radar-zone-clip')
+      .selectAll('circle')
+      .data([null])
+      .join('circle')
+      .attr('r', rScale(maxDistance));
+
+    const zoneLayer = svg
+      .selectAll('g.zone-layer')
+      .data([null])
+      .join('g')
+      .attr('class', 'zone-layer')
+      .attr('clip-path', 'url(#radar-zone-clip)');
+
     // Zone Overlays Group
-    const zoneGroup = svg
+    const zoneGroup = zoneLayer
       .selectAll<SVGGElement, RadarZone>('g.zone-group')
       .data(this._zones, (d) => d.entity_id)
       .join(
