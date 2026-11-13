@@ -1822,6 +1822,147 @@ describe('RadarCard', () => {
     });
   });
 
+  describe('Points sharing one position', () => {
+    const pair = (lat2 = 52.53): HassEntity[] => [
+      {
+        entity_id: 'device_tracker.alpha',
+        state: 'not_home',
+        attributes: { latitude: 52.53, longitude: 13.41, friendly_name: 'Alpha' },
+      } as HassEntity,
+      {
+        entity_id: 'device_tracker.beta',
+        state: 'not_home',
+        attributes: { latitude: lat2, longitude: 13.41, friendly_name: 'Beta' },
+      } as HassEntity,
+    ];
+
+    const mount = async (cfg: Partial<RadarCardConfig> = {}) => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, entities: ['device_tracker.alpha', 'device_tracker.beta'], ...cfg });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+    };
+
+    const groups = () => Array.from(element.shadowRoot?.querySelectorAll<SVGGElement>('g.entity-group') ?? []);
+    const chooserButtons = () =>
+      Array.from(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('.point-chooser button') ?? []);
+
+    beforeEach(() => {
+      for (const entity of pair()) hass.states[entity.entity_id] = entity;
+    });
+
+    it('should open a chooser instead of acting on the topmost point', async () => {
+      await mount();
+      groups()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+
+      expect(fireEvent).not.toHaveBeenCalled();
+      expect(chooserButtons().map((b) => b.querySelector('.point-chooser-name')?.textContent)).toEqual([
+        'Alpha',
+        'Beta',
+      ]);
+    });
+
+    it('should reach each stacked entity through the chooser', async () => {
+      await mount();
+      groups()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+      chooserButtons()[0].click();
+      await element.updateComplete;
+
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.alpha' });
+      expect(element.shadowRoot?.querySelector('.point-chooser')).toBeNull();
+
+      groups()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+      chooserButtons()[1].click();
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.beta' });
+    });
+
+    it('should honour a tap_action of the chosen entity', async () => {
+      await mount({
+        entities: ['device_tracker.alpha', { entity: 'device_tracker.beta', tap_action: { action: 'toggle' } }],
+      });
+      groups()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+      chooserButtons()[1].click();
+
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-action', {
+        config: { entity: 'device_tracker.beta', tap_action: { action: 'toggle' } },
+        action: 'tap',
+      });
+    });
+
+    it.each(['Enter', ' '])('should open the chooser on a "%s" keypress and focus its first item', async (key) => {
+      await mount();
+      groups()[0].dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      await element.updateComplete;
+
+      expect(fireEvent).not.toHaveBeenCalled();
+      expect(chooserButtons()).toHaveLength(2);
+      expect(element.shadowRoot?.activeElement).toBe(chooserButtons()[0]);
+    });
+
+    it('should close the chooser on Escape and on a click outside', async () => {
+      await mount();
+      groups()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      await element.updateComplete;
+      element.shadowRoot
+        ?.querySelector('.point-chooser')
+        ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await element.updateComplete;
+      expect(element.shadowRoot?.querySelector('.point-chooser')).toBeNull();
+
+      groups()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+      element.shadowRoot?.querySelector<HTMLElement>('.point-chooser-backdrop')?.click();
+      await element.updateComplete;
+      expect(element.shadowRoot?.querySelector('.point-chooser')).toBeNull();
+      expect(fireEvent).not.toHaveBeenCalled();
+    });
+
+    it('should keep acting at once on a point that stands alone', async () => {
+      hass.states['device_tracker.beta'] = pair(52.55)[1];
+      await mount();
+      groups()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+
+      expect(element.shadowRoot?.querySelector('.point-chooser')).toBeNull();
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.beta' });
+    });
+
+    it('should list every point of a pile on the rim in the chooser', async () => {
+      // Both due north of the centre, one 1 km and one 2 km out, on a 0.5 km radar.
+      for (const [id, lat] of [
+        ['device_tracker.alpha', 52.529],
+        ['device_tracker.beta', 52.538],
+      ] as const) {
+        hass.states[id] = {
+          ...hass.states[id],
+          attributes: { ...hass.states[id].attributes, latitude: lat, longitude: 13.404954 },
+        };
+      }
+      await mount({ auto_radar_max_distance: false, radar_max_distance: 0.5 });
+      groups()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await element.updateComplete;
+
+      expect(chooserButtons().map((b) => b.querySelector('.point-chooser-name')?.textContent)).toEqual([
+        'Alpha',
+        'Beta',
+      ]);
+    });
+
+    it('should list the whole pile in the tooltip as well', async () => {
+      await mount();
+      groups()[1].dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: 10, clientY: 10 }));
+      await element.updateComplete;
+
+      expect(element.shadowRoot?.querySelectorAll('.tooltip-stack-item')).toHaveLength(2);
+    });
+  });
+
   describe('Teardown', () => {
     beforeEach(() => {
       hass.states['device_tracker.test_device'] = {
