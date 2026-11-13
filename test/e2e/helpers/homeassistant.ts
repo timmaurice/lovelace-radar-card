@@ -177,6 +177,16 @@ export async function setState(
   if (!res.ok) throw new Error(`setting ${entityId} failed: ${res.status} ${await res.text()}`);
 }
 
+/** The state an entity currently has, or `undefined` if there is none. */
+export async function getState(entityId: string): Promise<string | undefined> {
+  const res = await fetch(`${BASE_URL}/api/states/${entityId}`, {
+    headers: { Authorization: `Bearer ${readTokens().access_token}` },
+  });
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error(`reading ${entityId} failed: ${res.status} ${await res.text()}`);
+  return ((await res.json()) as { state: string }).state;
+}
+
 export async function removeState(entityId: string): Promise<void> {
   await fetch(`${BASE_URL}/api/states/${entityId}`, {
     method: 'DELETE',

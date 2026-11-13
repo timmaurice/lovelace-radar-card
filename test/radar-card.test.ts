@@ -3,7 +3,6 @@ import { RadarCard as RadarCardClass } from '../src/radar-card';
 import type { RadarCard, RadarMarker, RadarPoint } from '../src/radar-card';
 import { HaDialog, HassEntity, HomeAssistant, RadarCardConfig } from '../src/types';
 import { fireEvent } from '../src/utils';
-import { handleAction } from 'custom-card-helpers';
 import { childrenMatching, defineHaElementStandIns, removedTags, unslottedChildren } from './ha-elements';
 
 // The marker dialog is only meaningful against the slots HA's dialog really has.
@@ -59,11 +58,6 @@ vi.mock('../src/utils', async () => {
 });
 // Mock console.info
 vi.spyOn(console, 'info').mockImplementation(() => {});
-
-// Mock custom-card-helpers
-vi.mock('custom-card-helpers', () => ({
-  handleAction: vi.fn(),
-}));
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -309,27 +303,57 @@ describe('RadarCard', () => {
       expect(entityDot).toBeNull();
     });
 
-    it('should execute custom tap_action routing exclusively when explicitly mapped via config dictionary', async () => {
-      const customAction = { action: 'navigate' as const, navigation_path: '/lovelace' };
+    // Every action type HA's `ui_action` selector offers. The card must hand each
+    // one to the frontend unchanged, in the shape HA's own handleAction reads.
+    it.each([
+      { action: 'perform-action', perform_action: 'input_boolean.toggle', target: { entity_id: 'input_boolean.x' } },
+      { action: 'perform-action', perform_action: 'light.turn_on', data: { brightness: 10 }, confirmation: true },
+      { action: 'assist', pipeline_id: 'last_used', start_listening: true },
+      { action: 'more-info' },
+      { action: 'more-info', entity: 'sensor.other' },
+      { action: 'toggle' },
+      { action: 'navigate', navigation_path: '/lovelace' },
+      { action: 'url', url_path: 'https://www.home-assistant.io' },
+      { action: 'none' },
+    ])('should dispatch hass-action for a $action tap_action', async (tapAction) => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);
       element.hass = hass;
       element.setConfig({
         ...config,
-        entities: [{ entity: 'device_tracker.test_device', tap_action: customAction }],
+        entities: [{ entity: 'device_tracker.test_device', tap_action: tapAction }],
       });
       await element.updateComplete;
       await vi.runAllTimersAsync();
+      vi.mocked(fireEvent).mockClear();
 
       const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
       entityDot?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-      expect(handleAction).toHaveBeenCalledWith(
-        element,
-        expect.anything(),
-        { tap_action: customAction, entity: 'device_tracker.test_device' },
-        'tap',
-      );
+      expect(fireEvent).toHaveBeenCalledTimes(1);
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-action', {
+        config: { entity: 'device_tracker.test_device', tap_action: tapAction },
+        action: 'tap',
+      });
+    });
+
+    it('should fall back to more-info when the tap_action is "default"', async () => {
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({
+        ...config,
+        entities: [{ entity: 'device_tracker.test_device', tap_action: { action: 'default' } }],
+      });
+      await element.updateComplete;
+      await vi.runAllTimersAsync();
+      vi.mocked(fireEvent).mockClear();
+
+      const entityDot = element.shadowRoot?.querySelector<SVGCircleElement>('circle.entity-dot');
+      entityDot?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(fireEvent).toHaveBeenCalledTimes(1);
+      expect(fireEvent).toHaveBeenCalledWith(element, 'hass-more-info', { entityId: 'device_tracker.test_device' });
     });
   });
 

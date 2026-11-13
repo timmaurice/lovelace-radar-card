@@ -1,4 +1,14 @@
-import { ActionConfig } from 'custom-card-helpers';
+/**
+ * An action as HA's `ui_action` selector writes it (`more-info`, `toggle`,
+ * `navigate`, `url`, `perform-action`, `assist`, `none`, ...). The card never
+ * interprets it: it hands it to the frontend in a `hass-action` event, so the
+ * remaining keys (`perform_action`, `data`, `target`, `confirmation`, ...) pass
+ * through untouched.
+ */
+export interface ActionConfig {
+  action: string;
+  [key: string]: unknown;
+}
 
 export interface FrontendLocaleData {
   language: string;

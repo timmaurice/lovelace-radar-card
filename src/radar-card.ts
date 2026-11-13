@@ -13,7 +13,6 @@ import { max as d3Max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { easeCubicOut } from 'd3-ease';
 import { localize } from './localize.js';
-import { handleAction } from 'custom-card-helpers';
 import { select } from 'd3-selection';
 import 'd3-transition';
 import cardStyles from './styles/card.styles.scss';
@@ -899,13 +898,13 @@ export class RadarCard extends LitElement implements LovelaceCard {
         const entityConf = this._config.entities.find((e) => (typeof e === 'string' ? e : e.entity) === d.entity_id);
         const tapAction = typeof entityConf !== 'string' ? entityConf?.tap_action : undefined;
 
-        if (tapAction && (tapAction.action as string) !== 'default') {
-          handleAction(
-            this,
-            this.hass as unknown as Parameters<typeof handleAction>[1],
-            { tap_action: tapAction, entity: d.entity_id },
-            'tap',
-          );
+        if (tapAction && tapAction.action !== 'default') {
+          // The frontend runs the action itself, so every type the action
+          // editor offers works, perform-action and assist included.
+          fireEvent(this, 'hass-action', {
+            config: { entity: d.entity_id, tap_action: tapAction },
+            action: 'tap',
+          });
         } else {
           fireEvent(this, 'hass-more-info', { entityId: d.entity_id });
         }
