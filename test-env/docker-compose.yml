@@ -2,7 +2,7 @@ name: radar-card-test
 services:
   test-homeassistant:
     container_name: ha-radar-card-test
-    image: homeassistant/home-assistant:stable
+    image: homeassistant/home-assistant:2026.11.1
     volumes:
       - ./config:/config
       - ../dist:/config/www/dist:ro
