@@ -65,6 +65,8 @@ export default {
     typescript({
       sourceMap: dev,
       inlineSources: dev,
+      // A type error fails the build instead of shipping a bundle anyway.
+      noEmitOnError: true,
     }),
     !dev && terser(),
   ],
