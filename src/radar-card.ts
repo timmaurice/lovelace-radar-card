@@ -826,6 +826,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
     // Set position and tooltip for all dots (new and updated)
     entityGroup //
       .attr('tabindex', 0)
+      .attr('role', 'button')
+      .attr('aria-label', (d) => this._getPointAccessibleLabel(d, distanceUnit))
       .attr(
         'class',
         (d) =>
@@ -1012,7 +1014,13 @@ export class RadarCard extends LitElement implements LovelaceCard {
     this._chooser = null;
     const opener = this._chooserOpener;
     this._chooserOpener = null;
-    if (restoreFocus && opener instanceof SVGElement) opener.focus();
+    if (!restoreFocus || !(opener instanceof SVGElement)) return;
+    opener.focus();
+    // The focused chooser button is removed by the next render, which can leave
+    // focus on the page body; put it back on the dot once that render is done.
+    void this.updateComplete.then(() => {
+      if (opener.isConnected && this.shadowRoot?.activeElement !== opener) opener.focus();
+    });
   }
 
   private _chooseCoincidentPoint(point: RadarPoint): void {
