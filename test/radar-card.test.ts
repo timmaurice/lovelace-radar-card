@@ -873,6 +873,37 @@ describe('RadarCard', () => {
       expect(ping).not.toBeNull();
     });
 
+    it('should keep moving the dot when a tracker starts moving after the first render', async () => {
+      const stationary = hass.states['device_tracker.test_device'];
+      hass.states['device_tracker.test_device'] = {
+        ...stationary,
+        attributes: { ...stationary.attributes, activity: 'Stationary' },
+      };
+      element = document.createElement('radar-card') as RadarCard;
+      document.body.appendChild(element);
+      element.hass = hass;
+      element.setConfig({ ...config, moving_animation_enabled: true, animation_enabled: false });
+      await element.updateComplete;
+      const dot = () => element.shadowRoot?.querySelector('g.entity-group')?.getAttribute('transform');
+      const before = dot();
+
+      // The dots already exist now, so the new ping has to be inserted next to them.
+      element.hass = {
+        ...hass,
+        states: {
+          ...hass.states,
+          'device_tracker.test_device': {
+            ...stationary,
+            attributes: { ...stationary.attributes, latitude: 52.55, activity: 'Walking' },
+          },
+        },
+      } as HomeAssistant;
+      await element.updateComplete;
+
+      expect(element.shadowRoot?.querySelector('circle.entity-ping')).not.toBeNull();
+      expect(dot()).not.toBe(before);
+    });
+
     it('should trigger animation when test event is fired in edit mode', async () => {
       element = document.createElement('radar-card') as RadarCard;
       document.body.appendChild(element);

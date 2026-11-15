@@ -767,7 +767,8 @@ export class RadarCard extends LitElement implements LovelaceCard {
       .join(
         (enter) =>
           enter
-            .insert('circle', 'circle.entity-dot') // Insert before the actual entity dots
+            // The dots sit inside their groups; insertBefore needs a direct child of the svg.
+            .insert('circle', 'g.entity-group')
             .attr('class', 'entity-ping'),
         (update) => update,
         (exit) => exit.remove(),
