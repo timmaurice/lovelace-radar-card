@@ -37,7 +37,7 @@
 - Configure legend position (`bottom`, `left`, `right`) and optionally show distances within it.
 - **Conditional Tracking**: Activate `hide_at_home` to cleanly declutter the interface by dropping static trackers automatically off the array the moment they arrive back to the Home position.
 
-![Radar Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-radar-card/main/screenshot.png)
+<img src="https://raw.githubusercontent.com/timmaurice/lovelace-radar-card/main/screenshot.png" alt="Radar Card Screenshot" width="500">
 
 ## Localization
 
